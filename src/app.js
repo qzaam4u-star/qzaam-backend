@@ -5,7 +5,13 @@ const { errorHandler } = require('./middlewares/error.middleware');
 const app = express();
 
 // Global Middlewares
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://qzaam-frontend.vercel.app"
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // Routes Setup
