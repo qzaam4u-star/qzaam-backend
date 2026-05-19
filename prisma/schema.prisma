@@ -191,7 +191,7 @@ model Wallet {
   customer   Customer? @relation(fields: [customerId], references: [id])
   userId     String?   @unique
   user       User?     @relation(fields: [userId], references: [id])
-  balance      Float               @default(500)
+  balance      Float               @default(0)
   createdAt    DateTime            @default(now())
   transactions WalletTransaction[]
 }

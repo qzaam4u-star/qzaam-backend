@@ -285,7 +285,7 @@ router.get('/wallet-balance', async (req, res, next) => {
         const wallet = await prisma.wallet.create({
           data: {
             userId: vendor.id,
-            balance: 500.0
+            balance: 0.0
           }
         });
         return res.json({ balance: wallet.balance, customerId: vendor.id, referralCode: vendor.referralCode });
@@ -322,7 +322,7 @@ router.get('/wallet-balance', async (req, res, next) => {
       const wallet = await prisma.wallet.create({
         data: {
           customerId: customer.id,
-          balance: 500.0
+          balance: 0.0
         }
       });
       return res.json({ balance: wallet.balance, customerId: customer.id, referralCode: customer.referralCode });
@@ -619,7 +619,7 @@ router.post('/topup/verify', async (req, res) => {
     if (vendor) {
       if (!vendor.wallet) {
         wallet = await prisma.wallet.create({
-          data: { userId: vendor.id, balance: 500.0 + parseFloat(amount) }
+          data: { userId: vendor.id, balance: parseFloat(amount) }
         });
       } else {
         wallet = await prisma.wallet.update({
@@ -644,7 +644,7 @@ router.post('/topup/verify', async (req, res) => {
 
       if (!customer.wallet) {
         wallet = await prisma.wallet.create({
-          data: { customerId: customer.id, balance: 500.0 + parseFloat(amount) }
+          data: { customerId: customer.id, balance: parseFloat(amount) }
         });
       } else {
         wallet = await prisma.wallet.update({
@@ -698,7 +698,7 @@ router.post('/wallet-topup', async (req, res, next) => {
       wallet = await prisma.wallet.create({
         data: {
           customerId: customer.id,
-          balance: 500.0 + parseFloat(amount)
+          balance: parseFloat(amount)
         }
       });
     } else {
