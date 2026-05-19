@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  vendor
+  admin
+}
+
+model User {
+  id                String   @id @default(uuid())
+  name              String
+  email             String   @unique
+  mobile            String
+  password          String
+  outletName        String?
+  address           String?
+  averagePrepTime   Int?
+  accountNumber     String?
+  ifscCode          String?
+  accountHolderName String?
+  bankName          String?
+  upiId             String?
+  branchName        String?
+  city              String?
+  state             String?
+  pincode           String?
+  storeDescription  String?
+  profileImage      String?
+  isApproved        Boolean  @default(false)
+  hasGst            Boolean  @default(false)
+  gstNumber         String?
+  role              Role     @default(vendor)
+  vendorType        String   @default("food") // "food" | "salon"
+  createdAt         DateTime @default(now())
+  menuItems         MenuItem[]
+  orders            Order[]
+  services          Service[]
+  bookings          Booking[]
+  complaints        Complaint[]
+  reviews           Review[]
+  referralCode      String?  @unique
+  referredBy        String?
+  wallet            Wallet?
+  vendorTokenIndex  Int      @default(0)
+  stylists          Stylist[]
+  
+  // Food Slot Configuration
+  slotDuration      Int?     @default(30)
+  maxOrdersPerSlot  Int?     @default(5)
+  openingTime       String?  @default("09:00")
+  closingTime       String?  @default("21:00")
+  slotEnabled       Boolean  @default(false)
+}
+
+
+model Service {
+  id          String   @id @default(uuid())
+  vendorId    String
+  vendor      User     @relation(fields: [vendorId], references: [id])
+  name        String
+  price       Float
+  duration    Int      @default(30) // minutes
+  category    String   @default("General")
+  createdAt   DateTime @default(now())
+}
+
+model Booking {
+  id             String    @id @default(uuid())
+  vendorId       String
+  vendor         User      @relation(fields: [vendorId], references: [id])
+  customerId     String?
+  customerName   String
+  customerPhone  String
+  services       Json
+  totalAmount    Float
+  platformFee    Float     @default(0)
+  finalAmount    Float     @default(0)
+  slotTime       DateTime
+  slotEndTime    DateTime?
+  totalDuration  Int?      // total service duration in minutes
+  tokenNumber    String?
+  tokenIndex     Int?
+  status         String    @default("placed") // placed, accepted, in_service, completed, cancelled
+  paymentMethod  String    @default("razorpay")
+  paymentStatus  String    @default("paid")
+  customerAction String?
+  hasArrived     Boolean   @default(false)
+  serviceStartTime DateTime?
+  serviceEndTime   DateTime?
+  stylistId      String?
+  stylist        Stylist?  @relation(fields: [stylistId], references: [id])
+  stylistPreference String   @default("specific") // "specific" | "anyone"
+  type           String    @default("salon")
+
+  createdAt      DateTime  @default(now())
+  reviews        Review[]
+  reviewGiven    Boolean   @default(false)
+  customerDelayMinutes       Int?
+  customerDelayUpdatedAt     DateTime?
+}
+
+model Stylist {
+  id       String @id @default(uuid())
+  name     String
+  vendorId String
+  vendor   User   @relation(fields: [vendorId], references: [id])
+  bookings Booking[]
+}
+
+model Customer {
+  id           String      @id @default(uuid())
+  name         String
+  phone        String      @unique
+  createdAt    DateTime    @default(now())
+  orders       Order[]
+  complaints   Complaint[]
+  reviews      Review[]
+  wallet       Wallet?
+  referralCode String?     @unique
+  referredBy   String?
+}
+
+model MenuItem {
+  id          String   @id @default(uuid())
+  name        String
+  price       Float
+  category    String
+  description String   @default("")
+  prepTime    Int      @default(10)
+  vendorId    String
+  vendor      User     @relation(fields: [vendorId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  customerName  String
+  customerPhone String
+  customerId    String?
+  customer      Customer?   @relation(fields: [customerId], references: [id])
+  vendorId      String
+  vendor        User        @relation(fields: [vendorId], references: [id])
+  items         Json
+  totalAmount   Float
+  platformFee   Float       @default(0)
+  finalAmount   Float       @default(0)
+  status        String      @default("pending")
+  paymentMethod String      @default("cash")
+  paymentStatus String      @default("pending")
+  createdAt     DateTime    @default(now())
+  complaints    Complaint[]
+  reviewGiven   Boolean     @default(false)
+  reviews       Review[]
+  deliveryTime  String?     @default("ASAP")
+  expiresAt     DateTime?
+  tokenNumber   String?
+  tokenIndex    Int?
+  customerAction String?
+  acceptedAt    DateTime?
+  preparingAt   DateTime?
+  readyAt       DateTime?
+  
+  // Scheduling & Activation
+  scheduledDate     String?
+  scheduledSlot     String?
+  slotDateTime      DateTime?
+  scheduledTime     DateTime?
+  activationTime    DateTime?
+  isActivated       Boolean     @default(true)
+  activatedAt       DateTime?
+
+  // Dual Confirmation Handover
+  handoverCompletedByVendor  Boolean   @default(false)
+  pickupConfirmedByCustomer  Boolean   @default(false)
+  handoverCompletedAt        DateTime?
+  pickupConfirmedAt          DateTime?
+  customerDelayMinutes       Int?
+  customerDelayUpdatedAt     DateTime?
+}
+
+
+
+model Wallet {
+  id         String    @id @default(uuid())
+  customerId String?   @unique
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  userId     String?   @unique
+  user       User?     @relation(fields: [userId], references: [id])
+  balance      Float               @default(500)
+  createdAt    DateTime            @default(now())
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id        String   @id @default(uuid())
+  walletId  String
+  amount    Float
+  type      String   // "credit" | "debit"
+  source    String   // "topup" | "order" | "referral"
+  createdAt DateTime @default(now())
+
+  wallet    Wallet   @relation(fields: [walletId], references: [id])
+}
+
+model Referral {
+  id           String   @id @default(uuid())
+  referrerCode String
+  referredUser String
+  rewardGiven  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model Complaint {
+  id          String   @id @default(uuid())
+  orderId     String
+  customerId  String
+  vendorId    String
+
+  subject     String
+  description String
+  priority    String   // low, medium, high
+  status      String   @default("open")
+
+  createdAt   DateTime @default(now())
+
+  order       Order    @relation(fields: [orderId], references: [id])
+  customer    Customer @relation(fields: [customerId], references: [id])
+  vendor      User     @relation(fields: [vendorId], references: [id])
+}
+
+model Review {
+  id          String   @id @default(uuid())
+  rating      Int
+  comment     String?
+
+  customerId  String
+  vendorId    String
+  orderId     String?
+  bookingId   String?
+
+  createdAt   DateTime @default(now())
+
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  vendor      User      @relation(fields: [vendorId], references: [id])
+  order       Order?    @relation(fields: [orderId], references: [id])
+  booking     Booking?  @relation(fields: [bookingId], references: [id])
+}
+
+model VendorReferral {
+  id              String   @id @default(uuid())
+  name            String
+  phone           String
+  location        String
+  referredByPhone String
+  status          String   @default("pending") // pending, contacted, onboarded
+  createdAt       DateTime @default(now())
+}

@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "MenuItem" ADD COLUMN     "description" TEXT NOT NULL DEFAULT '',
+ADD COLUMN     "prepTime" INTEGER NOT NULL DEFAULT 10;
