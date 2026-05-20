@@ -164,4 +164,29 @@ router.get('/my-referrals/:referralCodeOrUserId', async (req, res, next) => {
   }
 });
 
+// Validate Referral Code (Public)
+router.post('/validate', async (req, res, next) => {
+  try {
+    const { code, phone } = req.body;
+    if (!code) {
+      return res.status(400).json({ success: false, message: 'Referral code is required.' });
+    }
+
+    const { validateAndCheckReferral } = require('../utils/referral');
+    const checkResult = await validateAndCheckReferral(code, phone || '');
+
+    if (checkResult.isValid) {
+      return res.json({
+        success: true,
+        message: 'Valid referral code! Platform fee waived.',
+        referrerName: checkResult.referrer.name
+      });
+    } else {
+      return res.status(400).json({ success: false, message: checkResult.message });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

@@ -41,7 +41,51 @@ router.get('/', async (req, res, next) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    res.status(200).json({ success: true, wallet, transactions, referralCode });
+    let totalReferrals = 0;
+    let rewardsEarned = 0;
+    let referralsHistory = [];
+
+    if (wallet.customerId && referralCode) {
+      // Find all CustomerReferral entries where the referrer code is this customer's referralCode
+      const referrals = await prisma.customerReferral.findMany({
+        where: { referrerCode: referralCode },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      totalReferrals = referrals.length;
+      rewardsEarned = referrals.reduce((sum, r) => sum + r.rewardAmount, 0);
+
+      // Fetch the referred customer names and registration dates
+      referralsHistory = await Promise.all(
+        referrals.map(async (ref) => {
+          const referredCust = await prisma.customer.findUnique({
+            where: { id: ref.referredId },
+            select: { name: true, phone: true, createdAt: true }
+          });
+          
+          let status = 'completed'; // Reward is logged when they complete an order/booking
+          
+          return {
+            id: ref.id,
+            name: referredCust?.name || 'Friend',
+            phone: referredCust?.phone || 'N/A',
+            joinedAt: referredCust?.createdAt || ref.createdAt,
+            status,
+            rewardAmount: ref.rewardAmount
+          };
+        })
+      );
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      wallet, 
+      transactions, 
+      referralCode,
+      totalReferrals,
+      rewardsEarned,
+      referralsHistory
+    });
   } catch (error) {
     next(error);
   }

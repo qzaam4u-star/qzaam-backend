@@ -31,22 +31,17 @@ const registerUser = async (data) => {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const { generateReferralCode } = require('../utils/referral');
-  const userReferralCode = generateReferralCode();
+  const { generateVendorReferralCode } = require('../utils/referral');
+  const userReferralCode = generateVendorReferralCode();
 
   let referredByCode = null;
   if (data.referralCode) {
     const inputCode = data.referralCode.trim().toUpperCase();
-    const referrerUser = await prisma.user.findFirst({
-      where: { referralCode: { equals: inputCode, mode: 'insensitive' } }
-    });
-    if (referrerUser) {
-      referredByCode = inputCode;
-    } else {
-      const referrerCust = await prisma.customer.findFirst({
+    if (inputCode.startsWith('VENDOR-')) {
+      const referrerUser = await prisma.user.findFirst({
         where: { referralCode: { equals: inputCode, mode: 'insensitive' } }
       });
-      if (referrerCust) {
+      if (referrerUser) {
         referredByCode = inputCode;
       }
     }

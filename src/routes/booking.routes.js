@@ -254,10 +254,79 @@ router.patch('/:id', protect, restrictTo('vendor'), async (req, res, next) => {
       where: { id: req.params.id },
       data: updateData
     });
+
+    if (updatedBooking.status === 'completed') {
+      await processBookingCustomerReferralRewards(updatedBooking);
+    }
+
     res.json({ success: true, data: updatedBooking });
   } catch (error) {
     next(error);
   }
 });
+
+async function processBookingCustomerReferralRewards(booking) {
+  if (!booking.appliedReferralCode) return;
+  
+  // Prevent duplicate reward processing for this referred customer/booking
+  const existingLog = await prisma.customerReferral.findFirst({
+    where: {
+      OR: [
+        { bookingId: booking.id },
+        { referredId: booking.customerId }
+      ]
+    }
+  });
+
+  if (existingLog) {
+    console.log(`[CustomerReferral] Reward already processed for booking ${booking.id} or customer ${booking.customerId}`);
+    return;
+  }
+
+  // Find the referrer customer (owner of the applied referral code)
+  const referrer = await prisma.customer.findUnique({
+    where: { referralCode: booking.appliedReferralCode },
+    include: { wallet: true }
+  });
+
+  if (!referrer) {
+    console.log(`[CustomerReferral] Referrer with code ${booking.appliedReferralCode} not found.`);
+    return;
+  }
+
+  // Create customer referral record
+  await prisma.customerReferral.create({
+    data: {
+      referrerCode: booking.appliedReferralCode,
+      referredId: booking.customerId,
+      bookingId: booking.id,
+      rewardAmount: 50.0
+    }
+  });
+
+  // Credit referrer's wallet
+  let wallet = referrer.wallet;
+  if (!wallet) {
+    wallet = await prisma.wallet.create({
+      data: { customerId: referrer.id, balance: 0.0 }
+    });
+  }
+
+  await prisma.wallet.update({
+    where: { id: wallet.id },
+    data: { balance: { increment: 50.0 } }
+  });
+
+  await prisma.walletTransaction.create({
+    data: {
+      walletId: wallet.id,
+      amount: 50.0,
+      type: 'credit',
+      source: 'referral'
+    }
+  });
+
+  console.log(`[CustomerReferral] Credited ₹50 to referrer ${referrer.phone} for booking referral ${booking.customerPhone}`);
+}
 
 module.exports = router;

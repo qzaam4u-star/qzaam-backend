@@ -4,14 +4,14 @@
  * NO mismatched calculations.
  */
 
-const calculateOrderTotals = ({ subtotal, hasGst = false, vendorType = 'food' }) => {
+const calculateOrderTotals = ({ subtotal, hasGst = false, vendorType = 'food', isReferralApplied = false }) => {
   const parsedSubtotal = parseFloat(subtotal || 0);
   
   // 1. Platform Fee / Commission
   // Food: Based on slabs. Salon: Fixed for now or same logic?
   // User example: ₹140 subtotal -> ₹5 fee.
   let platformFee = 0;
-  if (parsedSubtotal > 0) {
+  if (parsedSubtotal > 0 && !isReferralApplied) {
     if (parsedSubtotal < 200) platformFee = 5;
     else if (parsedSubtotal <= 500) platformFee = 10;
     else if (parsedSubtotal <= 1000) platformFee = 15;

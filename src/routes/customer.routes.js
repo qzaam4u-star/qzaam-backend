@@ -32,12 +32,12 @@ router.post('/login', async (req, res, next) => {
     const finalName = name?.trim() || 'Guest';
 
     if (!customer) {
-      const { generateReferralCode } = require('../utils/referral');
+      const { generateCustomerReferralCode } = require('../utils/referral');
       customer = await prisma.customer.create({
         data: {
           name: finalName,
           phone,
-          referralCode: generateReferralCode(),
+          referralCode: generateCustomerReferralCode(),
           wallet: {
             create: { balance: 0.0 }
           }

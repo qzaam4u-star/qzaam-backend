@@ -2,6 +2,7 @@ const express = require('express');
 const prisma = require('../config/prisma');
 const { protect, restrictTo } = require('../middlewares/auth.middleware');
 const { calculateOrderTotals } = require('../utils/orderCalculator');
+const { validateAndCheckReferral } = require('../utils/referral');
 
 const router = express.Router();
 
@@ -71,10 +72,74 @@ async function processReferralRewards(vendorId) {
   }
 }
 
+async function processCustomerReferralRewards(order) {
+  if (!order.appliedReferralCode) return;
+  
+  // Prevent duplicate reward processing for this referred customer/order
+  const existingLog = await prisma.customerReferral.findFirst({
+    where: {
+      OR: [
+        { orderId: order.id },
+        { referredId: order.customerId }
+      ]
+    }
+  });
+
+  if (existingLog) {
+    console.log(`[CustomerReferral] Reward already processed for order ${order.id} or customer ${order.customerId}`);
+    return;
+  }
+
+  // Find the referrer customer (owner of the applied referral code)
+  const referrer = await prisma.customer.findUnique({
+    where: { referralCode: order.appliedReferralCode },
+    include: { wallet: true }
+  });
+
+  if (!referrer) {
+    console.log(`[CustomerReferral] Referrer with code ${order.appliedReferralCode} not found.`);
+    return;
+  }
+
+  // Create customer referral record
+  await prisma.customerReferral.create({
+    data: {
+      referrerCode: order.appliedReferralCode,
+      referredId: order.customerId,
+      orderId: order.id,
+      rewardAmount: 50.0
+    }
+  });
+
+  // Credit referrer's wallet
+  let wallet = referrer.wallet;
+  if (!wallet) {
+    wallet = await prisma.wallet.create({
+      data: { customerId: referrer.id, balance: 0.0 }
+    });
+  }
+
+  await prisma.wallet.update({
+    where: { id: wallet.id },
+    data: { balance: { increment: 50.0 } }
+  });
+
+  await prisma.walletTransaction.create({
+    data: {
+      walletId: wallet.id,
+      amount: 50.0,
+      type: 'credit',
+      source: 'referral'
+    }
+  });
+
+  console.log(`[CustomerReferral] Credited ₹50 to referrer ${referrer.phone} for referring ${order.customerPhone}`);
+}
+
 // Calculate Total (Public)
 router.post('/calculate-total', async (req, res, next) => {
   try {
-    const { subtotal, vendorId } = req.body;
+    const { subtotal, vendorId, referralCode, phone } = req.body;
     
     // Fetch vendor to check for GST
     const vendor = await prisma.user.findUnique({
@@ -82,13 +147,30 @@ router.post('/calculate-total', async (req, res, next) => {
       select: { hasGst: true, vendorType: true }
     });
 
+    let isReferralApplied = false;
+    if (referralCode) {
+      const referralCheck = await validateAndCheckReferral(referralCode, phone || '');
+      if (referralCheck.isValid) {
+        isReferralApplied = true;
+      } else {
+        return res.status(400).json({ success: false, message: referralCheck.message });
+      }
+    }
+
     const totals = calculateOrderTotals({ 
       subtotal, 
       hasGst: vendor?.hasGst || false,
-      vendorType: vendor?.vendorType || 'food'
+      vendorType: vendor?.vendorType || 'food',
+      isReferralApplied
     });
 
-    res.json({ success: true, data: totals });
+    res.json({ 
+      success: true, 
+      data: {
+        ...totals,
+        referralApplied: isReferralApplied
+      } 
+    });
   } catch (error) {
     next(error);
   }
@@ -97,7 +179,7 @@ router.post('/calculate-total', async (req, res, next) => {
 // Create Order (Public — Guest Checkout)
 router.post('/', async (req, res, next) => {
   try {
-    const { customerName, customerPhone, vendorId, items, totalAmount, deliveryTime } = req.body;
+    const { customerName, customerPhone, vendorId, items, totalAmount, deliveryTime, appliedReferralCode, scheduledDate, scheduledSlot, slotDateTime } = req.body;
 
     const existingVendor = await prisma.user.findFirst({
       where: { mobile: customerPhone, role: 'vendor' }
@@ -109,12 +191,30 @@ router.post('/', async (req, res, next) => {
       });
     }
 
+    // Validate referral code if provided
+    let isReferralApplied = false;
+    let validReferralCode = null;
+    if (appliedReferralCode) {
+      const referralCheck = await validateAndCheckReferral(appliedReferralCode, customerPhone);
+      if (referralCheck.isValid) {
+        isReferralApplied = true;
+        validReferralCode = referralCheck.trimmedCode;
+      } else {
+        return res.status(400).json({ success: false, message: referralCheck.message });
+      }
+    }
+
     // Find or create customer by phone (persistent guest tracking)
     let customer = await prisma.customer.findUnique({ where: { phone: customerPhone } });
     if (!customer) {
-      const { generateReferralCode } = require('../utils/referral');
+      const { generateCustomerReferralCode } = require('../utils/referral');
       customer = await prisma.customer.create({
-        data: { name: customerName, phone: customerPhone, referralCode: generateReferralCode() }
+        data: { 
+          name: customerName, 
+          phone: customerPhone, 
+          referralCode: generateCustomerReferralCode(),
+          wallet: { create: { balance: 0.0 } }
+        }
       });
     } else if (customer.name !== customerName) {
       // Update name if customer is placing order with a different name
@@ -134,7 +234,8 @@ router.post('/', async (req, res, next) => {
     const totals = calculateOrderTotals({ 
       subtotal: totalAmount, 
       hasGst: vendor?.hasGst || false,
-      vendorType: vendor?.vendorType || 'food'
+      vendorType: vendor?.vendorType || 'food',
+      isReferralApplied
     });
 
     const order = await prisma.order.create({
@@ -150,9 +251,12 @@ router.post('/', async (req, res, next) => {
         status: 'pending',
         deliveryTime: deliveryTime || 'ASAP',
         expiresAt,
-        tokenNumber: null
+        tokenNumber: null,
+        appliedReferralCode: validReferralCode,
+        scheduledDate: scheduledDate || null,
+        scheduledSlot: scheduledSlot || null,
+        slotDateTime: slotDateTime ? new Date(slotDateTime) : null
       }
-
     });
 
     res.status(201).json({ success: true, data: order });
@@ -335,6 +439,7 @@ router.patch('/:id', protect, restrictTo('vendor'), async (req, res, next) => {
 
     if (order.status === 'completed') {
       await processReferralRewards(order.vendorId);
+      await processCustomerReferralRewards(order);
     }
 
     res.status(200).json({ success: true, data: order });
@@ -432,6 +537,7 @@ router.post('/:id/confirm-pickup', async (req, res, next) => {
 
     if (updated.status === 'completed') {
       await processReferralRewards(updated.vendorId);
+      await processCustomerReferralRewards(updated);
     }
 
     res.json({ success: true, data: updated });

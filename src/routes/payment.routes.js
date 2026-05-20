@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const prisma = require('../config/prisma');
 const { generateVendorToken } = require('../services/token.service');
 const { calculateOrderTotals } = require('../utils/orderCalculator');
+const { validateAndCheckReferral } = require('../utils/referral');
 
 const router = express.Router();
 const { protect } = require('../middlewares/auth.middleware');
@@ -65,8 +66,21 @@ router.post('/verify', async (req, res, next) => {
       return res.status(400).json({ message: 'Vendor ID missing' });
     }
 
-    const { customerName, customerPhone, vendorId, totalAmount } = orderData;
+    const { customerName, customerPhone, vendorId, totalAmount, appliedReferralCode } = orderData;
     
+    // Validate referral code if provided
+    let isReferralApplied = false;
+    let validReferralCode = null;
+    if (appliedReferralCode) {
+      const referralCheck = await validateAndCheckReferral(appliedReferralCode, customerPhone);
+      if (referralCheck.isValid) {
+        isReferralApplied = true;
+        validReferralCode = referralCheck.trimmedCode;
+      } else {
+        return res.status(400).json({ success: false, message: referralCheck.message });
+      }
+    }
+
     // RE-CALCULATE totals on backend for security and consistency
     const vendorForTotals = await prisma.user.findUnique({
       where: { id: vendorId },
@@ -76,7 +90,8 @@ router.post('/verify', async (req, res, next) => {
     const totals = calculateOrderTotals({
       subtotal: totalAmount,
       hasGst: vendorForTotals?.hasGst || false,
-      vendorType: vendorForTotals?.vendorType || orderData.type || 'food'
+      vendorType: vendorForTotals?.vendorType || orderData.type || 'food',
+      isReferralApplied
     });
 
     console.log('[DEBUG] Payment Verify - Calculated Totals:', totals);
@@ -95,12 +110,12 @@ router.post('/verify', async (req, res, next) => {
     // Find or create customer by phone
     let customer = await prisma.customer.findUnique({ where: { phone: customerPhone } });
     if (!customer) {
-      const { generateReferralCode } = require('../utils/referral');
+      const { generateCustomerReferralCode } = require('../utils/referral');
       customer = await prisma.customer.create({
         data: { 
           name: customerName, 
           phone: customerPhone, 
-          referralCode: generateReferralCode(),
+          referralCode: generateCustomerReferralCode(),
           wallet: { create: { balance: 0.0 } }
         }
       });
@@ -180,7 +195,8 @@ router.post('/verify', async (req, res, next) => {
           tokenIndex: null,
           stylistId: stylistPreference === 'anyone' ? null : stylistId,
           stylistPreference: stylistPreference || 'specific',
-          type: 'salon'
+          type: 'salon',
+          appliedReferralCode: validReferralCode
         }
       });
 
@@ -252,7 +268,8 @@ router.post('/verify', async (req, res, next) => {
         scheduledTime: slotDateTime ? new Date(slotDateTime) : null,
         activationTime,
         isActivated,
-        activatedAt
+        activatedAt,
+        appliedReferralCode: validReferralCode
       }
     });
 
@@ -300,19 +317,19 @@ router.get('/wallet-balance', async (req, res, next) => {
 
     // If customer doesn't exist, create it on demand so they have a wallet!
     if (!customer) {
-      const { generateReferralCode } = require('../utils/referral');
+      const { generateCustomerReferralCode } = require('../utils/referral');
       customer = await prisma.customer.create({
-        data: { name: 'Guest', phone, referralCode: generateReferralCode() },
+        data: { name: 'Guest', phone, referralCode: generateCustomerReferralCode() },
         include: { wallet: true }
       });
     }
 
     // If customer exists but no referral code, create one on the fly!
     if (customer && !customer.referralCode) {
-      const { generateReferralCode } = require('../utils/referral');
+      const { generateCustomerReferralCode } = require('../utils/referral');
       customer = await prisma.customer.update({
         where: { id: customer.id },
-        data: { referralCode: generateReferralCode() },
+        data: { referralCode: generateCustomerReferralCode() },
         include: { wallet: true }
       });
     }
@@ -340,7 +357,20 @@ const clientOrderIdCache = new Map();
 router.post('/wallet-pay', async (req, res, next) => {
   try {
     const { userId, amount, commissionAmount, orderData } = req.body;
-    const { vendorId } = orderData;
+    const { vendorId, customerPhone, appliedReferralCode } = orderData;
+
+    // Validate referral code if provided
+    let isReferralApplied = false;
+    let validReferralCode = null;
+    if (appliedReferralCode) {
+      const referralCheck = await validateAndCheckReferral(appliedReferralCode, customerPhone);
+      if (referralCheck.isValid) {
+        isReferralApplied = true;
+        validReferralCode = referralCheck.trimmedCode;
+      } else {
+        return res.status(400).json({ success: false, message: referralCheck.message });
+      }
+    }
 
     // RE-CALCULATE totals on backend
     const vendorForTotals = await prisma.user.findUnique({
@@ -351,7 +381,8 @@ router.post('/wallet-pay', async (req, res, next) => {
     const totals = calculateOrderTotals({
       subtotal: parseFloat(orderData.totalAmount),
       hasGst: vendorForTotals?.hasGst || false,
-      vendorType: vendorForTotals?.vendorType || orderData.type || 'food'
+      vendorType: vendorForTotals?.vendorType || orderData.type || 'food',
+      isReferralApplied
     });
 
     console.log('[DEBUG] Wallet Pay - Calculated Totals:', totals);
@@ -491,7 +522,8 @@ router.post('/wallet-pay', async (req, res, next) => {
           tokenNumber: null, tokenIndex: null,
           stylistId: stylistPreference === 'anyone' ? null : stylistId,
           stylistPreference: stylistPreference || 'specific',
-          type: 'salon'
+          type: 'salon',
+          appliedReferralCode: validReferralCode
         }
       });
 
@@ -541,7 +573,8 @@ router.post('/wallet-pay', async (req, res, next) => {
         scheduledTime: slotDateTime ? new Date(slotDateTime) : null,
         activationTime,
         isActivated,
-        activatedAt
+        activatedAt,
+        appliedReferralCode: validReferralCode
       }
     });
 
@@ -635,9 +668,9 @@ router.post('/topup/verify', async (req, res) => {
       });
 
       if (!customer) {
-        const { generateReferralCode } = require('../utils/referral');
+        const { generateCustomerReferralCode } = require('../utils/referral');
         customer = await prisma.customer.create({
-          data: { name: 'Guest', phone, referralCode: generateReferralCode() },
+          data: { name: 'Guest', phone, referralCode: generateCustomerReferralCode() },
           include: { wallet: true }
         });
       }
@@ -686,9 +719,9 @@ router.post('/wallet-topup', async (req, res, next) => {
     });
 
     if (!customer) {
-      const { generateReferralCode } = require('../utils/referral');
+      const { generateCustomerReferralCode } = require('../utils/referral');
       customer = await prisma.customer.create({
-        data: { name: 'Guest', phone, referralCode: generateReferralCode() },
+        data: { name: 'Guest', phone, referralCode: generateCustomerReferralCode() },
         include: { wallet: true }
       });
     }

@@ -102,6 +102,9 @@ model Booking {
   reviewGiven    Boolean   @default(false)
   customerDelayMinutes       Int?
   customerDelayUpdatedAt     DateTime?
+
+  appliedReferralCode        String?
+  @@index([appliedReferralCode])
 }
 
 model Stylist {
@@ -181,6 +184,9 @@ model Order {
   pickupConfirmedAt          DateTime?
   customerDelayMinutes       Int?
   customerDelayUpdatedAt     DateTime?
+
+  appliedReferralCode        String?
+  @@index([appliedReferralCode])
 }
 
 
@@ -259,4 +265,17 @@ model VendorReferral {
   referredByPhone String
   status          String   @default("pending") // pending, contacted, onboarded
   createdAt       DateTime @default(now())
+}
+
+model CustomerReferral {
+  id           String   @id @default(uuid())
+  referrerCode String
+  referredId   String
+  orderId      String?
+  bookingId    String?
+  rewardAmount Float    @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([referrerCode])
+  @@index([referredId])
 }
