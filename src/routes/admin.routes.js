@@ -72,6 +72,55 @@ router.post('/login', async (req, res, next) => {
 // All routes here are protected and restricted to admin
 router.use(protect, restrictTo('admin'));
 
+/**
+ * @route   PUT /api/admin/change-password
+ * @desc    Securely change admin password
+ * @access  Admin only (JWT required)
+ */
+router.put('/change-password', async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+    }
+
+    const bcrypt = require('bcrypt');
+
+    // Fetch admin record from DB using ID from JWT
+    const admin = await prisma.user.findFirst({
+      where: { id: req.user.id, role: 'admin' }
+    });
+
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, admin.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+    }
+
+    // Hash new password securely
+    const hashedNew = await bcrypt.hash(newPassword, 10);
+
+    // Update in database
+    await prisma.user.update({
+      where: { id: admin.id },
+      data: { password: hashedNew }
+    });
+
+    res.status(200).json({ success: true, message: 'Password updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/dashboard', async (req, res, next) => {
   try {
     const totalVendors = await prisma.user.count({
