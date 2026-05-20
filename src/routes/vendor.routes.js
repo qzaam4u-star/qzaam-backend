@@ -162,4 +162,72 @@ router.delete('/stylists/:id', protect, restrictTo('vendor'), async (req, res, n
 });
 
 
+
+/**
+ * @route   GET /api/vendor/reviews
+ * @desc    Get all reviews for the authenticated vendor with customer & order/booking details
+ * @access  Vendor only (JWT required)
+ */
+router.get('/reviews', protect, restrictTo('vendor'), async (req, res, next) => {
+  try {
+    const vendorId = req.user.id;
+
+    const reviews = await prisma.review.findMany({
+      where: { vendorId },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: {
+        customer: {
+          select: { name: true, phone: true }
+        },
+        order: {
+          select: {
+            id: true,
+            totalAmount: true,
+            status: true,
+            items: true,
+            createdAt: true
+          }
+        },
+        booking: {
+          select: {
+            id: true,
+            totalAmount: true,
+            status: true,
+            services: true,
+            slotTime: true,
+            stylist: { select: { name: true } }
+          }
+        }
+      }
+    });
+
+    // Compute summary stats
+    const total = reviews.length;
+    const avgRating = total > 0
+      ? (reviews.reduce((acc, r) => acc + r.rating, 0) / total).toFixed(1)
+      : '0.0';
+    const positive = reviews.filter(r => r.rating >= 4).length;
+    const positivePercent = total > 0 ? Math.round((positive / total) * 100) : 0;
+    const ratedOrders = reviews.filter(r => !!r.orderId).length;
+    const ratedBookings = reviews.filter(r => !!r.bookingId).length;
+
+    res.json({
+      success: true,
+      data: {
+        reviews,
+        summary: {
+          total,
+          avgRating,
+          positivePercent,
+          ratedOrders,
+          ratedBookings
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
