@@ -11,17 +11,36 @@ router.post('/login', async (req, res, next) => {
     if (!password) {
       return res.status(400).json({ success: false, message: 'Password is required' });
     }
-    if (password !== 'admin@123') {
-      return res.status(401).json({ success: false, message: 'Invalid admin password' });
-    }
+
+    const bcrypt = require('bcrypt');
 
     // Fetch the admin user from database
-    const admin = await prisma.user.findFirst({
+    let admin = await prisma.user.findFirst({
       where: { role: 'admin' }
     });
 
+    // If admin does not exist, automatically seed it with default password 'admin@123'
     if (!admin) {
-      return res.status(404).json({ success: false, message: 'Admin user not found. Please seed the database first.' });
+      const hashedPassword = await bcrypt.hash('admin@123', 10);
+      admin = await prisma.user.create({
+        data: {
+          name: 'Super Admin',
+          email: 'admin@qzaam.com',
+          mobile: '0000000000',
+          password: hashedPassword,
+          role: 'admin',
+          isApproved: true,
+          wallet: {
+            create: { balance: 0.0 }
+          }
+        }
+      });
+    }
+
+    // Validate using bcrypt.compare()
+    const isPasswordValid = await bcrypt.compare(password, admin.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ success: false, message: 'Invalid admin password' });
     }
 
     const token = jwt.sign(

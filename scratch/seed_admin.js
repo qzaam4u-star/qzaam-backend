@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 
 async function seed() {
   try {
-    const hashedPassword = await bcrypt.hash('password123', 10);
+    const hashedPassword = await bcrypt.hash('admin@123', 10);
     const admin = await prisma.user.upsert({
       where: { email: 'admin@qzaam.com' },
       update: {},
