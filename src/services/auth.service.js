@@ -8,12 +8,12 @@ const registerUser = async (data) => {
     name, email, mobile, password, role,
     outletName, address, averagePrepTime,
     accountNumber, ifscCode, accountHolderName,
-    vendorType
+    vendorType, hasGst, gstNumber
   } = data;
 
   if (role === 'vendor' && (
     !name || !outletName || !mobile || !password || !address || 
-    averagePrepTime === undefined || !accountNumber || !ifscCode || !accountHolderName
+    averagePrepTime === undefined
   )) {
     throw new ApiError(400, 'All vendor fields are required');
   }
@@ -63,9 +63,10 @@ const registerUser = async (data) => {
       outletName,
       address,
       averagePrepTime,
-      accountNumber,
-      ifscCode,
-      accountHolderName,
+      // Bank fields are optional — stored as null if not provided
+      accountNumber: accountNumber || null,
+      ifscCode: ifscCode || null,
+      accountHolderName: accountHolderName || null,
       referralCode: userReferralCode,
       referredBy: referredByCode || null,
       vendorType: vendorType || 'food',

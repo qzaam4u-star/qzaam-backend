@@ -18,24 +18,26 @@ const registerSchema = z.object({
     outletName: z.string().optional(),
     address: z.string().optional(),
     averagePrepTime: z.number().int().optional(),
-    accountNumber: z.string().optional(),
-    ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Invalid IFSC format').optional(),
-    accountHolderName: z.string().optional(),
+    // Bank fields are now optional — not required at registration
+    accountNumber: z.string().optional().nullable(),
+    ifscCode: z.string().optional().nullable(),
+    accountHolderName: z.string().optional().nullable(),
     referralCode: z.string().optional().nullable(),
+    vendorType: z.string().optional(),
+    hasGst: z.boolean().optional(),
+    gstNumber: z.string().optional().nullable(),
+    acceptedTerms: z.boolean().optional(),
   }).refine((data) => {
     if (data.role === 'vendor') {
       return (
-        !!data.outletName && 
-        !!data.address && 
-        data.averagePrepTime !== undefined && 
-        !!data.accountNumber && 
-        !!data.ifscCode && 
-        !!data.accountHolderName
+        !!data.outletName &&
+        !!data.address &&
+        data.averagePrepTime !== undefined
       );
     }
     return true;
   }, {
-    message: "All vendor fields (Outlet, Address, Prep Time, Bank Details) are required",
+    message: "Vendor fields (Outlet Name, Address, Prep Time) are required",
     path: ["role"]
   }),
 });
