@@ -499,7 +499,7 @@ router.post('/wallet-pay', async (req, res, next) => {
       }
     });
 
-    const { customerName, customerPhone, totalAmount, platformFee, finalAmount } = orderData;
+    const { customerName, totalAmount, platformFee, finalAmount } = orderData;
     // const token = await generateVendorToken(vendorId); // REMOVED
 
 
