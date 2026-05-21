@@ -279,14 +279,13 @@ async function processBookingCustomerReferralRewards(booking) {
   });
 
   if (existingLog) {
-    console.log(`[CustomerReferral] Reward already processed for booking ${booking.id} or customer ${booking.customerId}`);
+    console.log(`[CustomerReferral] Referral already processed for booking ${booking.id} or customer ${booking.customerId}`);
     return;
   }
 
   // Find the referrer customer (owner of the applied referral code)
   const referrer = await prisma.customer.findUnique({
-    where: { referralCode: booking.appliedReferralCode },
-    include: { wallet: true }
+    where: { referralCode: booking.appliedReferralCode }
   });
 
   if (!referrer) {
@@ -300,33 +299,11 @@ async function processBookingCustomerReferralRewards(booking) {
       referrerCode: booking.appliedReferralCode,
       referredId: booking.customerId,
       bookingId: booking.id,
-      rewardAmount: 50.0
+      rewardAmount: 0.0
     }
   });
 
-  // Credit referrer's wallet
-  let wallet = referrer.wallet;
-  if (!wallet) {
-    wallet = await prisma.wallet.create({
-      data: { customerId: referrer.id, balance: 0.0 }
-    });
-  }
-
-  await prisma.wallet.update({
-    where: { id: wallet.id },
-    data: { balance: { increment: 50.0 } }
-  });
-
-  await prisma.walletTransaction.create({
-    data: {
-      walletId: wallet.id,
-      amount: 50.0,
-      type: 'credit',
-      source: 'referral'
-    }
-  });
-
-  console.log(`[CustomerReferral] Credited ₹50 to referrer ${referrer.phone} for booking referral ${booking.customerPhone}`);
+  console.log(`[CustomerReferral] Successful referral logged for referrer ${referrer.phone} referring ${booking.customerPhone}`);
 }
 
 module.exports = router;

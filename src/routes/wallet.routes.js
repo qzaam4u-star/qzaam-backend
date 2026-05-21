@@ -41,8 +41,9 @@ router.get('/', async (req, res, next) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    let totalReferrals = 0;
-    let rewardsEarned = 0;
+    let totalSuccessfulReferrals = 0;
+    let referralsRemaining = 5;
+    let giftHamperEligible = false;
     let referralsHistory = [];
 
     if (wallet.customerId && referralCode) {
@@ -52,8 +53,9 @@ router.get('/', async (req, res, next) => {
         orderBy: { createdAt: 'desc' }
       });
 
-      totalReferrals = referrals.length;
-      rewardsEarned = referrals.reduce((sum, r) => sum + r.rewardAmount, 0);
+      totalSuccessfulReferrals = referrals.length;
+      referralsRemaining = Math.max(0, 5 - totalSuccessfulReferrals);
+      giftHamperEligible = totalSuccessfulReferrals >= 5;
 
       // Fetch the referred customer names and registration dates
       referralsHistory = await Promise.all(
@@ -70,8 +72,7 @@ router.get('/', async (req, res, next) => {
             name: referredCust?.name || 'Friend',
             phone: referredCust?.phone || 'N/A',
             joinedAt: referredCust?.createdAt || ref.createdAt,
-            status,
-            rewardAmount: ref.rewardAmount
+            status
           };
         })
       );
@@ -82,8 +83,9 @@ router.get('/', async (req, res, next) => {
       wallet, 
       transactions, 
       referralCode,
-      totalReferrals,
-      rewardsEarned,
+      totalSuccessfulReferrals,
+      referralsRemaining,
+      giftHamperEligible,
       referralsHistory
     });
   } catch (error) {
