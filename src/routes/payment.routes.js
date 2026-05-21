@@ -84,7 +84,7 @@ router.post('/verify', async (req, res, next) => {
     // RE-CALCULATE totals on backend for security and consistency
     const vendorForTotals = await prisma.user.findUnique({
       where: { id: vendorId },
-      select: { hasGst: true, vendorType: true }
+      select: { hasGst: true, vendorType: true, slotEnabled: true }
     });
 
     const totals = calculateOrderTotals({
@@ -131,6 +131,9 @@ router.post('/verify', async (req, res, next) => {
 
     // 🔀 Branch: Salon Booking vs Food Order
     if (orderData.type === 'salon') {
+      if (!vendorForTotals || !vendorForTotals.slotEnabled) {
+        return res.status(400).json({ success: false, message: 'Online slot booking is disabled by the vendor' });
+      }
       const { services, slotTime, stylistId, stylistPreference } = orderData;
       const slotDateTime = new Date(slotTime);
 
@@ -428,10 +431,13 @@ router.post('/wallet-pay', async (req, res, next) => {
     // 🍔 Pre-validation for Slots/Stylists before wallet deduction
     const vendor = await prisma.user.findUnique({
       where: { id: vendorId },
-      select: { averagePrepTime: true, vendorType: true }
+      select: { averagePrepTime: true, vendorType: true, slotEnabled: true }
     });
 
     if (orderData.type === 'salon') {
+      if (!vendor || !vendor.slotEnabled) {
+        return res.status(400).json({ success: false, message: 'Online slot booking is disabled by the vendor' });
+      }
       const { services, slotTime, stylistId, stylistPreference } = orderData;
       const slotDateTime = new Date(slotTime);
       const totalDuration = (services || []).reduce((sum, s) => sum + (s.duration || 30), 0);
