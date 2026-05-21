@@ -1,6 +1,7 @@
 const express = require('express');
 const prisma = require('../config/prisma');
 const { protect, restrictTo } = require('../middlewares/auth.middleware');
+const { getISTDayBounds, formatTimeInIndia } = require('../utils/timezone');
 
 const router = express.Router();
 
@@ -10,16 +11,14 @@ router.get('/vendor/:vendorId/booked-slots', async (req, res, next) => {
     const { date } = req.query;
     if (!date) return res.status(400).json({ success: false, message: 'Date required' });
 
-    const startDate = new Date(date);
-    const endDate = new Date(date);
-    endDate.setDate(endDate.getDate() + 1);
+    const { startOfDay: startDate, endOfDay: endDate } = getISTDayBounds(date);
 
     const bookings = await prisma.booking.findMany({
       where: {
         vendorId: req.params.vendorId,
         slotTime: {
           gte: startDate,
-          lt: endDate
+          lte: endDate
         },
         status: { not: 'cancelled' }
       },
@@ -31,8 +30,8 @@ router.get('/vendor/:vendorId/booked-slots', async (req, res, next) => {
       const start = new Date(b.slotTime);
       const end = b.slotEndTime ? new Date(b.slotEndTime) : new Date(b.slotTime.getTime() + 30 * 60000);
       return {
-        startTime: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
-        endTime: `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`,
+        startTime: formatTimeInIndia(start),
+        endTime: formatTimeInIndia(end),
         stylistId: b.stylistId || null
       };
     });

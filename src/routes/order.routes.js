@@ -3,6 +3,7 @@ const prisma = require('../config/prisma');
 const { protect, restrictTo } = require('../middlewares/auth.middleware');
 const { calculateOrderTotals } = require('../utils/orderCalculator');
 const { validateAndCheckReferral } = require('../utils/referral');
+const { parseISTDateTime, formatTimeInIndia } = require('../utils/timezone');
 
 const router = express.Router();
 
@@ -201,11 +202,9 @@ router.post('/', async (req, res, next) => {
       });
     }
 
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
     const vendor = await prisma.user.findUnique({
       where: { id: vendorId },
-      select: { hasGst: true, vendorType: true }
+      select: { hasGst: true, vendorType: true, averagePrepTime: true }
     });
 
     const totals = calculateOrderTotals({ 
@@ -214,6 +213,34 @@ router.post('/', async (req, res, next) => {
       vendorType: vendor?.vendorType || 'food',
       isReferralApplied
     });
+
+    const isScheduled = !!(scheduledDate && scheduledSlot) || !!slotDateTime;
+    const now = new Date();
+    let status = 'pending';
+    let isActivated = true;
+    let activationTime = null;
+    let activatedAt = now;
+    let expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
+    let scheduledTime = null;
+
+    if (isScheduled) {
+      scheduledTime = (scheduledDate && scheduledSlot)
+        ? parseISTDateTime(scheduledDate, scheduledSlot)
+        : new Date(slotDateTime);
+      const prepTime = vendor?.averagePrepTime || 10;
+      activationTime = new Date(scheduledTime.getTime() - prepTime * 60 * 1000);
+      
+      if (activationTime <= now) {
+        status = 'pending';
+        isActivated = true;
+        activatedAt = now;
+      } else {
+        status = 'upcoming';
+        isActivated = false;
+        activatedAt = null;
+        expiresAt = null; // Auto-cancel starts only after activation
+      }
+    }
 
     const order = await prisma.order.create({
       data: {
@@ -225,14 +252,18 @@ router.post('/', async (req, res, next) => {
         totalAmount: totals.subtotal,
         platformFee: totals.platformFee,
         finalAmount: totals.finalTotal,
-        status: 'pending',
+        status,
         deliveryTime: deliveryTime || 'ASAP',
         expiresAt,
         tokenNumber: null,
         appliedReferralCode: validReferralCode,
-        scheduledDate: scheduledDate || null,
-        scheduledSlot: scheduledSlot || null,
-        slotDateTime: slotDateTime ? new Date(slotDateTime) : null
+        scheduledDate: scheduledDate || (scheduledTime ? scheduledTime.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : null),
+        scheduledSlot: scheduledSlot || (scheduledTime ? formatTimeInIndia(scheduledTime) : null),
+        slotDateTime: scheduledTime,
+        scheduledTime: scheduledTime,
+        activationTime,
+        isActivated,
+        activatedAt
       }
     });
 

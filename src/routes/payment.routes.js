@@ -5,6 +5,7 @@ const prisma = require('../config/prisma');
 const { generateVendorToken } = require('../services/token.service');
 const { calculateOrderTotals } = require('../utils/orderCalculator');
 const { validateAndCheckReferral } = require('../utils/referral');
+const { parseISTDateTime, formatTimeInIndia } = require('../utils/timezone');
 
 const router = express.Router();
 const { protect } = require('../middlewares/auth.middleware');
@@ -134,8 +135,10 @@ router.post('/verify', async (req, res, next) => {
       if (!vendorForTotals || !vendorForTotals.slotEnabled) {
         return res.status(400).json({ success: false, message: 'Online slot booking is disabled by the vendor' });
       }
-      const { services, slotTime, stylistId, stylistPreference } = orderData;
-      const slotDateTime = new Date(slotTime);
+      const { services, slotTime, stylistId, stylistPreference, scheduledDate, scheduledSlot } = orderData;
+      const slotDateTime = (scheduledDate && scheduledSlot)
+        ? parseISTDateTime(scheduledDate, scheduledSlot)
+        : new Date(slotTime);
 
       // Calculate total service duration
       const totalDuration = (services || []).reduce((sum, s) => sum + (s.duration || 30), 0);
@@ -207,7 +210,7 @@ router.post('/verify', async (req, res, next) => {
     }
 
 
-    // 🍔 Food Order (existing logic)
+    // 🍔 Food Order
     const { items, deliveryTime, scheduledDate, scheduledSlot, slotDateTime } = orderData;
     
     // Fetch vendor for prep time
@@ -216,16 +219,19 @@ router.post('/verify', async (req, res, next) => {
       select: { averagePrepTime: true }
     });
 
-    const isScheduled = !!slotDateTime;
+    const isScheduled = !!(scheduledDate && scheduledSlot) || !!slotDateTime;
     const now = new Date();
     let status = 'live';
     let isActivated = true;
     let activationTime = null;
     let activatedAt = now;
     let expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
+    let scheduledTime = null;
 
     if (isScheduled) {
-      const scheduledTime = new Date(slotDateTime);
+      scheduledTime = (scheduledDate && scheduledSlot)
+        ? parseISTDateTime(scheduledDate, scheduledSlot)
+        : new Date(slotDateTime);
       const prepTime = vendor?.averagePrepTime || 10;
       const cutOffTime = new Date(scheduledTime.getTime() - prepTime * 60 * 1000);
 
@@ -265,17 +271,16 @@ router.post('/verify', async (req, res, next) => {
         expiresAt,
         tokenNumber: null,
         tokenIndex: null,
-        scheduledDate,
-        scheduledSlot,
-        slotDateTime: slotDateTime ? new Date(slotDateTime) : null,
-        scheduledTime: slotDateTime ? new Date(slotDateTime) : null,
+        scheduledDate: scheduledDate || (scheduledTime ? scheduledTime.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : null),
+        scheduledSlot: scheduledSlot || (scheduledTime ? formatTimeInIndia(scheduledTime) : null),
+        slotDateTime: scheduledTime,
+        scheduledTime: scheduledTime,
         activationTime,
         isActivated,
         activatedAt,
         appliedReferralCode: validReferralCode
       }
     });
-
 
     res.json({
       success: true,
@@ -438,8 +443,10 @@ router.post('/wallet-pay', async (req, res, next) => {
       if (!vendor || !vendor.slotEnabled) {
         return res.status(400).json({ success: false, message: 'Online slot booking is disabled by the vendor' });
       }
-      const { services, slotTime, stylistId, stylistPreference } = orderData;
-      const slotDateTime = new Date(slotTime);
+      const { services, slotTime, stylistId, stylistPreference, scheduledDate, scheduledSlot } = orderData;
+      const slotDateTime = (scheduledDate && scheduledSlot)
+        ? parseISTDateTime(scheduledDate, scheduledSlot)
+        : new Date(slotTime);
       const totalDuration = (services || []).reduce((sum, s) => sum + (s.duration || 30), 0);
       const slotEndTime = new Date(slotDateTime.getTime() + totalDuration * 60000);
 
@@ -478,10 +485,13 @@ router.post('/wallet-pay', async (req, res, next) => {
       }
     } else {
       // Food Order Validation
-      const { slotDateTime } = orderData;
-      if (slotDateTime) {
+      const { scheduledDate, scheduledSlot, slotDateTime } = orderData;
+      const isScheduled = !!(scheduledDate && scheduledSlot) || !!slotDateTime;
+      if (isScheduled) {
         const now = new Date();
-        const scheduledTime = new Date(slotDateTime);
+        const scheduledTime = (scheduledDate && scheduledSlot)
+          ? parseISTDateTime(scheduledDate, scheduledSlot)
+          : new Date(slotDateTime);
         const prepTime = vendor?.averagePrepTime || 10;
         const cutOffTime = new Date(scheduledTime.getTime() - prepTime * 60 * 1000);
         if (now > cutOffTime) {
@@ -511,8 +521,10 @@ router.post('/wallet-pay', async (req, res, next) => {
 
     // 🔀 Branch: Salon Booking vs Food Order
     if (orderData.type === 'salon') {
-      const { services, slotTime, stylistId, stylistPreference } = orderData;
-      const slotDateTime = new Date(slotTime);
+      const { services, slotTime, stylistId, stylistPreference, scheduledDate, scheduledSlot } = orderData;
+      const slotDateTime = (scheduledDate && scheduledSlot)
+        ? parseISTDateTime(scheduledDate, scheduledSlot)
+        : new Date(slotTime);
       const totalDuration = (services || []).reduce((sum, s) => sum + (s.duration || 30), 0);
       const slotEndTime = new Date(slotDateTime.getTime() + totalDuration * 60000);
 
@@ -539,16 +551,19 @@ router.post('/wallet-pay', async (req, res, next) => {
     // 🍔 Food Order
     const { items, deliveryTime, scheduledDate, scheduledSlot, slotDateTime } = orderData;
     
-    const isScheduled = !!slotDateTime;
+    const isScheduled = !!(scheduledDate && scheduledSlot) || !!slotDateTime;
     const now = new Date();
     let status = 'live';
     let isActivated = true;
     let activationTime = null;
     let activatedAt = now;
     let expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
+    let scheduledTime = null;
 
     if (isScheduled) {
-      const scheduledTime = new Date(slotDateTime);
+      scheduledTime = (scheduledDate && scheduledSlot)
+        ? parseISTDateTime(scheduledDate, scheduledSlot)
+        : new Date(slotDateTime);
       const prepTime = vendor?.averagePrepTime || 10;
       activationTime = new Date(scheduledTime.getTime() - prepTime * 60 * 1000);
       
@@ -573,10 +588,10 @@ router.post('/wallet-pay', async (req, res, next) => {
         status, paymentMethod: 'wallet', paymentStatus: 'paid',
         deliveryTime: deliveryTime || 'ASAP', expiresAt,
         tokenNumber: null, tokenIndex: null,
-        scheduledDate,
-        scheduledSlot,
-        slotDateTime: slotDateTime ? new Date(slotDateTime) : null,
-        scheduledTime: slotDateTime ? new Date(slotDateTime) : null,
+        scheduledDate: scheduledDate || (scheduledTime ? scheduledTime.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : null),
+        scheduledSlot: scheduledSlot || (scheduledTime ? formatTimeInIndia(scheduledTime) : null),
+        slotDateTime: scheduledTime,
+        scheduledTime: scheduledTime,
         activationTime,
         isActivated,
         activatedAt,

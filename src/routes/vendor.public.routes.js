@@ -1,5 +1,6 @@
 const express = require('express');
 const prisma = require('../config/prisma');
+const { parseISTDateTime, getTodayInIndia, formatTimeInIndia, getISTDayBounds } = require('../utils/timezone');
 
 const router = express.Router();
 
@@ -110,24 +111,10 @@ router.get('/:id/available-food-slots', async (req, res, next) => {
 
     const slots = [];
 
-    // Safely construct start and end dates
-    // Using explicit components to avoid timezone shifts
-    const [year, month, dayNum] = date.split('-').map(Number);
-    const [startH, startM] = openingTime.split(':').map(Number);
-    const [endH, endM] = closingTime.split(':').map(Number);
-
-    let current = new Date(year, month - 1, dayNum);
-    current.setHours(startH || 9, startM || 0, 0, 0);
-
-    const end = new Date(year, month - 1, dayNum);
-    end.setHours(endH || 21, endM || 0, 0, 0);
-
-    const startOfDay = new Date(year, month - 1, dayNum);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(year, month - 1, dayNum);
-    endOfDay.setHours(23, 59, 59, 999);
-
+    // Safely construct start and end dates using IST-safe helpers
+    let current = parseISTDateTime(date, openingTime);
+    const end = parseISTDateTime(date, closingTime);
+    const { startOfDay, endOfDay } = getISTDayBounds(date);
 
     const orders = await prisma.order.findMany({
       where: {
@@ -141,15 +128,15 @@ router.get('/:id/available-food-slots', async (req, res, next) => {
       select: { slotDateTime: true }
     });
 
-    // Check if current slot is in the past (only for today)
+    // Check if current slot is in the past (only for today) using IST-safe helpers
     const now = new Date();
-    const isToday = new Date(date).toDateString() === now.toDateString();
+    const isToday = date === getTodayInIndia();
 
     // Limit loop to prevent infinite runs if data is corrupted
     let iterations = 0;
     while (current < end && iterations < 100) {
       iterations++;
-      const slotTimeStr = current.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const slotTimeStr = formatTimeInIndia(current);
       const ordersInSlot = orders.filter(o => o.slotDateTime && o.slotDateTime.getTime() === current.getTime()).length;
 
       const prepTimeMs = (vendor.averagePrepTime || 15) * 60000;
