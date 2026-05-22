@@ -173,7 +173,7 @@ router.get('/reviews', protect, restrictTo('vendor'), async (req, res, next) => 
     const vendorId = req.user.id;
 
     const reviews = await prisma.review.findMany({
-      where: { vendorId },
+      where: { vendorId, isHidden: false },
       orderBy: { createdAt: 'desc' },
       take: 100,
       include: {

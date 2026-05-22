@@ -251,6 +251,7 @@ model Review {
   orderId     String?
   bookingId   String?
 
+  isHidden    Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   customer    Customer  @relation(fields: [customerId], references: [id])

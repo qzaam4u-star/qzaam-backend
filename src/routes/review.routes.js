@@ -121,7 +121,7 @@ router.get('/vendor/:vendorId', async (req, res, next) => {
     const { vendorId } = req.params;
 
     const reviews = await prisma.review.findMany({
-      where: { vendorId }
+      where: { vendorId, isHidden: false }
     });
 
     const avg =
@@ -143,7 +143,7 @@ router.get('/list/:vendorId', async (req, res, next) => {
   try {
     const { vendorId } = req.params;
     const reviews = await prisma.review.findMany({
-      where: { vendorId },
+      where: { vendorId, isHidden: false },
       orderBy: { createdAt: 'desc' },
       take: 10,
       include: {
