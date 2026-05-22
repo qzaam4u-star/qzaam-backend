@@ -48,6 +48,7 @@ model User {
   wallet            Wallet?
   vendorTokenIndex  Int      @default(0)
   stylists          Stylist[]
+  wishlists         Wishlist[]
   
   // Food Slot Configuration
   slotDuration      Int?     @default(30)
@@ -126,6 +127,7 @@ model Customer {
   wallet       Wallet?
   referralCode String?     @unique
   referredBy   String?
+  wishlists    Wishlist[]
 }
 
 model MenuItem {
@@ -278,4 +280,16 @@ model CustomerReferral {
 
   @@index([referrerCode])
   @@index([referredId])
+}
+
+model Wishlist {
+  id          String   @id @default(uuid())
+  customerId  String
+  vendorId    String
+  createdAt   DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vendor   User     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, vendorId])
 }
