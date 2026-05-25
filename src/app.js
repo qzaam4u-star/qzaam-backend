@@ -8,10 +8,16 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://qzaam-frontend.vercel.app"
+    "https://qzaam-frontend.vercel.app",
+    "https://www.qzaam.com",
+    "https://qzaam.com"
   ],
-  credentials: true
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
+app.options(/.*/, cors());
 app.use(express.json());
 
 // Routes Setup
