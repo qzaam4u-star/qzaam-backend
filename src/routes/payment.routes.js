@@ -12,8 +12,8 @@ const { protect } = require('../middlewares/auth.middleware');
 
 
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_SkrpjWAPFjMaX5',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'I0WqwO5V20ZJnBvm9VfyKMcG'
+  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_SsXuVpEcNSIKpd',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'uhrn9m1XxHDBfuy184MWfeQl'
 });
 
 // 🔹 Create Razorpay Order (Only for platformFee)
@@ -51,7 +51,7 @@ router.post('/verify', async (req, res, next) => {
     }
 
     const body = razorpay_order_id + '|' + razorpay_payment_id;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET || 'I0WqwO5V20ZJnBvm9VfyKMcG';
+    const keySecret = process.env.RAZORPAY_KEY_SECRET || 'uhrn9m1XxHDBfuy184MWfeQl';
 
     const expectedSignature = crypto
       .createHmac('sha256', keySecret)
@@ -651,7 +651,7 @@ router.post('/topup/verify', async (req, res) => {
     }
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET || 'I0WqwO5V20ZJnBvm9VfyKMcG';
+    const keySecret = process.env.RAZORPAY_KEY_SECRET || 'uhrn9m1XxHDBfuy184MWfeQl';
 
     const expectedSignature = crypto
       .createHmac('sha256', keySecret)
