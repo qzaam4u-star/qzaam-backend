@@ -120,6 +120,7 @@ model Customer {
   id           String      @id @default(uuid())
   name         String
   phone        String      @unique
+  email        String?
   createdAt    DateTime    @default(now())
   orders       Order[]
   complaints   Complaint[]
@@ -224,17 +225,19 @@ model Referral {
 }
 
 model Complaint {
-  id          String   @id @default(uuid())
-  orderId     String
-  customerId  String
-  vendorId    String
+  id            String   @id @default(uuid())
+  orderId       String
+  customerId    String
+  vendorId      String
 
-  subject     String
-  description String
-  priority    String   // low, medium, high
-  status      String   @default("open")
+  subject       String
+  description   String
+  priority      String   // low, medium, high
+  status        String   @default("open")
+  adminResponse String?
 
-  createdAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
 
   order       Order    @relation(fields: [orderId], references: [id])
   customer    Customer @relation(fields: [customerId], references: [id])
