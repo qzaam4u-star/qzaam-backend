@@ -4,6 +4,79 @@ const { parseISTDateTime, getTodayInIndia, formatTimeInIndia, getISTDayBounds } 
 
 const router = express.Router();
 
+// ─── Helper: derive open/closed status from openingTime / closingTime strings ───
+function computeOpenStatus(openingTime, closingTime) {
+  try {
+    if (!openingTime || !closingTime) return 'open';
+    // Get current IST time as HH:MM
+    const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const nowMinutes = nowIST.getHours() * 60 + nowIST.getMinutes();
+    const [openH, openM] = openingTime.split(':').map(Number);
+    const [closeH, closeM] = closingTime.split(':').map(Number);
+    const openMinutes = openH * 60 + openM;
+    const closeMinutes = closeH * 60 + closeM;
+    return nowMinutes >= openMinutes && nowMinutes < closeMinutes ? 'open' : 'closed';
+  } catch {
+    return 'open';
+  }
+}
+
+// ─── GET /api/vendors — public vendor discovery list ───────────────────────────
+router.get('/', async (req, res, next) => {
+  try {
+    const { type } = req.query; // optional filter: 'food' | 'salon'
+
+    const whereClause = {
+      role: 'vendor',
+      isApproved: true,
+    };
+    if (type && (type === 'food' || type === 'salon')) {
+      whereClause.vendorType = type;
+    }
+
+    const vendors = await prisma.user.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        outletName: true,
+        vendorType: true,
+        address: true,
+        profileImage: true,
+        openingTime: true,
+        closingTime: true,
+        reviews: {
+          select: { rating: true },
+          where: { isHidden: false },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const result = vendors.map((v) => {
+      const ratings = v.reviews.map((r) => r.rating);
+      const averageRating =
+        ratings.length > 0
+          ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
+          : null;
+
+      return {
+        id: v.id,
+        outletName: v.outletName || 'Unnamed Vendor',
+        vendorType: v.vendorType,
+        address: v.address || '',
+        profileImage: v.profileImage || null,
+        averageRating,
+        totalReviews: ratings.length,
+        openStatus: computeOpenStatus(v.openingTime, v.closingTime),
+      };
+    });
+
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/:id', async (req, res, next) => {
   try {
     const vendor = await prisma.user.findUnique({
