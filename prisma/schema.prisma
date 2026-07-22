@@ -49,6 +49,7 @@ model User {
   vendorTokenIndex  Int      @default(0)
   stylists          Stylist[]
   wishlists         Wishlist[]
+  images      VendorImages[]
   
   // Food Slot Configuration
   slotDuration      Int?     @default(30)
@@ -296,4 +297,12 @@ model Wishlist {
   vendor   User     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@unique([customerId, vendorId])
+}
+
+model VendorImages {
+  id        String   @id @default(uuid())
+  imageUrl  String 
+  createdBy String
+  creator   User     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }

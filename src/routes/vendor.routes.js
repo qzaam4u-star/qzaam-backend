@@ -1,8 +1,34 @@
 const express = require('express');
+const multer = require('multer');
+const crypto = require('crypto');
 const { protect, restrictTo } = require('../middlewares/auth.middleware');
+const { ApiError } = require('../utils/errors');
+const { uploadBuffer, deleteObject } = require('../cloudflareR2');
 const prisma = require('../config/prisma');
 
 const router = express.Router();
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const EXTENSION_BY_MIME_TYPE = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+const MAX_IMAGE_SIZE_BYTES = Number(process.env.VENDOR_UPLOAD_MAX_SIZE_MB || 2) * 1024 * 1024;
+const MAX_IMAGE_FILES = Number(process.env.VENDOR_UPLOAD_MAX_FILES || 4);
+const MAX_TOTAL_IMAGES = Number(process.env.VENDOR_UPLOAD_MAX_TOTAL_IMAGES || 20);
+
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_IMAGE_SIZE_BYTES, files: MAX_IMAGE_FILES },
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+      return cb(new ApiError(400, `Unsupported file type: ${file.mimetype}`));
+    }
+    cb(null, true);
+  },
+});
 
 router.get('/generate-qr', protect, restrictTo('vendor'), async (req, res) => {
   const vendorId = req.user.id;
@@ -225,6 +251,88 @@ router.get('/reviews', protect, restrictTo('vendor'), async (req, res, next) => 
         }
       }
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /vendor/images — list all images uploaded by this vendor, plus the count/limit
+router.get('/images', protect, restrictTo('vendor'), async (req, res, next) => {
+  try {
+    const images = await prisma.vendorImages.findMany({
+      where: { createdBy: req.user.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({
+      success: true,
+      data: { images, count: images.length, max: MAX_TOTAL_IMAGES },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /vendor/images/:id — remove one of the vendor's own images from R2 and the DB
+router.delete('/images/:id', protect, restrictTo('vendor'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const image = await prisma.vendorImages.findUnique({ where: { id } });
+
+    if (!image || image.createdBy !== req.user.id) {
+      return next(new ApiError(404, 'Image not found'));
+    }
+
+    const key = new URL(image.imageUrl).pathname.replace(/^\//, '');
+    await deleteObject(key);
+    await prisma.vendorImages.delete({ where: { id } });
+
+    res.json({ success: true, message: 'Image deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /vendor/upload-images — vendor uploads up to MAX_IMAGE_FILES images (max MAX_IMAGE_SIZE_BYTES each) to R2
+router.post('/upload-images', protect, restrictTo('vendor'), (req, res, next) => {
+  imageUpload.array('images', MAX_IMAGE_FILES)(req, res, (err) => {
+    if (!err) return next();
+
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      return next(new ApiError(400, `Each image must be ${MAX_IMAGE_SIZE_BYTES / (1024 * 1024)}MB or smaller`));
+    }
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_COUNT') {
+      return next(new ApiError(400, `You can upload a maximum of ${MAX_IMAGE_FILES} images at once`));
+    }
+    next(err instanceof ApiError ? err : new ApiError(400, err.message));
+  });
+}, async (req, res, next) => {
+  try {
+    const vendorId = req.user.id;
+
+    if (!req.files || req.files.length === 0) {
+      return next(new ApiError(400, 'No images provided'));
+    }
+
+    const existingCount = await prisma.vendorImages.count({ where: { createdBy: vendorId } });
+    if (existingCount + req.files.length > MAX_TOTAL_IMAGES) {
+      return next(new ApiError(
+        400,
+        `You can upload a maximum of ${MAX_TOTAL_IMAGES} images in total. You have ${existingCount} already and are trying to add ${req.files.length} more.`,
+      ));
+    }
+
+    const created = await Promise.all(
+      req.files.map(async (file) => {
+        const ext = EXTENSION_BY_MIME_TYPE[file.mimetype] || 'jpg';
+        const key = `vendor-images/${vendorId}/${crypto.randomUUID()}.${ext}`;
+        const imageUrl = await uploadBuffer(file.buffer, key, file.mimetype);
+        return prisma.vendorImages.create({
+          data: { imageUrl, createdBy: vendorId },
+        });
+      }),
+    );
+
+    res.status(201).json({ success: true, data: created });
   } catch (error) {
     next(error);
   }

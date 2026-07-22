@@ -1,36 +1,45 @@
-const express = require('express');
-const prisma = require('../config/prisma');
-const { parseISTDateTime, getTodayInIndia, formatTimeInIndia, getISTDayBounds } = require('../utils/timezone');
+const express = require("express");
+const prisma = require("../config/prisma");
+const {
+  parseISTDateTime,
+  getTodayInIndia,
+  formatTimeInIndia,
+  getISTDayBounds,
+} = require("../utils/timezone");
 
 const router = express.Router();
 
 // ─── Helper: derive open/closed status from openingTime / closingTime strings ───
 function computeOpenStatus(openingTime, closingTime) {
   try {
-    if (!openingTime || !closingTime) return 'open';
+    if (!openingTime || !closingTime) return "open";
     // Get current IST time as HH:MM
-    const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const nowIST = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+    );
     const nowMinutes = nowIST.getHours() * 60 + nowIST.getMinutes();
-    const [openH, openM] = openingTime.split(':').map(Number);
-    const [closeH, closeM] = closingTime.split(':').map(Number);
+    const [openH, openM] = openingTime.split(":").map(Number);
+    const [closeH, closeM] = closingTime.split(":").map(Number);
     const openMinutes = openH * 60 + openM;
     const closeMinutes = closeH * 60 + closeM;
-    return nowMinutes >= openMinutes && nowMinutes < closeMinutes ? 'open' : 'closed';
+    return nowMinutes >= openMinutes && nowMinutes < closeMinutes
+      ? "open"
+      : "closed";
   } catch {
-    return 'open';
+    return "open";
   }
 }
 
 // ─── GET /api/vendors — public vendor discovery list ───────────────────────────
-router.get('/', async (req, res, next) => {
+router.get("/", async (req, res, next) => {
   try {
     const { type } = req.query; // optional filter: 'food' | 'salon'
 
     const whereClause = {
-      role: 'vendor',
+      role: "vendor",
       isApproved: true,
     };
-    if (type && (type === 'food' || type === 'salon')) {
+    if (type && (type === "food" || type === "salon")) {
       whereClause.vendorType = type;
     }
 
@@ -49,7 +58,7 @@ router.get('/', async (req, res, next) => {
           where: { isHidden: false },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     const result = vendors.map((v) => {
@@ -61,9 +70,9 @@ router.get('/', async (req, res, next) => {
 
       return {
         id: v.id,
-        outletName: v.outletName || 'Unnamed Vendor',
+        outletName: v.outletName || "Unnamed Vendor",
         vendorType: v.vendorType,
-        address: v.address || '',
+        address: v.address || "",
         profileImage: v.profileImage || null,
         averageRating,
         totalReviews: ratings.length,
@@ -77,7 +86,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.get('/:id', async (req, res, next) => {
+router.get("/:id", async (req, res, next) => {
   try {
     const vendor = await prisma.user.findUnique({
       where: { id: req.params.id },
@@ -95,12 +104,15 @@ router.get('/:id', async (req, res, next) => {
         maxOrdersPerSlot: true,
         openingTime: true,
         closingTime: true,
-        slotEnabled: true
-      }
+        slotEnabled: true,
+        images: true,
+      },
     });
 
-    if (!vendor || vendor.role !== 'vendor') {
-      return res.status(404).json({ success: false, message: 'Vendor not found' });
+    if (!vendor || vendor.role !== "vendor") {
+      return res
+        .status(404)
+        .json({ success: false, message: "Vendor not found" });
     }
 
     res.status(200).json({ success: true, data: vendor });
@@ -109,41 +121,46 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.get('/:id/available-stylists', async (req, res, next) => {
+router.get("/:id/available-stylists", async (req, res, next) => {
   try {
     const { id: vendorId } = req.params;
     const { slotTime, duration } = req.query; // duration in minutes
 
-    if (!slotTime) return res.status(400).json({ success: false, message: 'slotTime required' });
+    if (!slotTime)
+      return res
+        .status(400)
+        .json({ success: false, message: "slotTime required" });
 
     const startTime = new Date(slotTime);
     const durationMins = parseInt(duration) || 30;
     const endTime = new Date(startTime.getTime() + durationMins * 60000);
 
     const stylists = await prisma.stylist.findMany({
-      where: { vendorId }
+      where: { vendorId },
     });
 
     // A stylist is booked if any of their bookings overlaps with [startTime, endTime)
     const overlappingBookings = await prisma.booking.findMany({
       where: {
         vendorId,
-        status: { not: 'cancelled' },
+        status: { not: "cancelled" },
         stylistId: { not: null },
         // Overlap condition: existing booking starts before our end AND ends after our start
         slotTime: { lt: endTime },
         OR: [
           { slotEndTime: null, slotTime: { gte: startTime } }, // old bookings without endTime — block exact slot
-          { slotEndTime: { gt: startTime } }                   // new bookings with endTime
-        ]
+          { slotEndTime: { gt: startTime } }, // new bookings with endTime
+        ],
       },
-      select: { stylistId: true }
+      select: { stylistId: true },
     });
 
-    const bookedIds = overlappingBookings.map(b => b.stylistId).filter(Boolean);
-    const available = stylists.map(s => ({
+    const bookedIds = overlappingBookings
+      .map((b) => b.stylistId)
+      .filter(Boolean);
+    const available = stylists.map((s) => ({
       ...s,
-      isBooked: bookedIds.includes(s.id)
+      isBooked: bookedIds.includes(s.id),
     }));
 
     res.json({ success: true, data: available });
@@ -152,13 +169,13 @@ router.get('/:id/available-stylists', async (req, res, next) => {
   }
 });
 
-
-router.get('/:id/available-food-slots', async (req, res, next) => {
+router.get("/:id/available-food-slots", async (req, res, next) => {
   try {
     const { id: vendorId } = req.params;
     const { date } = req.query; // Expects 'YYYY-MM-DD'
 
-    if (!date) return res.status(400).json({ success: false, message: 'Date required' });
+    if (!date)
+      return res.status(400).json({ success: false, message: "Date required" });
 
     const vendor = await prisma.user.findUnique({
       where: { id: vendorId },
@@ -169,16 +186,21 @@ router.get('/:id/available-food-slots', async (req, res, next) => {
         closingTime: true,
         slotEnabled: true,
         vendorType: true,
-        averagePrepTime: true
-      }
+        averagePrepTime: true,
+      },
     });
 
-    if (!vendor || vendor.vendorType !== 'food' || !vendor.slotEnabled) {
-      return res.status(400).json({ success: false, message: 'Vendor does not support slot booking' });
+    if (!vendor || vendor.vendorType !== "food" || !vendor.slotEnabled) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Vendor does not support slot booking",
+        });
     }
 
-    const openingTime = vendor.openingTime || '09:00';
-    const closingTime = vendor.closingTime || '21:00';
+    const openingTime = vendor.openingTime || "09:00";
+    const closingTime = vendor.closingTime || "21:00";
     const slotDuration = vendor.slotDuration || 30;
     const maxOrdersPerSlot = vendor.maxOrdersPerSlot || 5;
 
@@ -194,11 +216,11 @@ router.get('/:id/available-food-slots', async (req, res, next) => {
         vendorId,
         slotDateTime: {
           gte: startOfDay,
-          lte: endOfDay
+          lte: endOfDay,
         },
-        status: { notIn: ['cancelled'] }
+        status: { notIn: ["cancelled"] },
       },
-      select: { slotDateTime: true }
+      select: { slotDateTime: true },
     });
 
     // Check if current slot is in the past (only for today) using IST-safe helpers
@@ -210,18 +232,20 @@ router.get('/:id/available-food-slots', async (req, res, next) => {
     while (current < end && iterations < 100) {
       iterations++;
       const slotTimeStr = formatTimeInIndia(current);
-      const ordersInSlot = orders.filter(o => o.slotDateTime && o.slotDateTime.getTime() === current.getTime()).length;
+      const ordersInSlot = orders.filter(
+        (o) => o.slotDateTime && o.slotDateTime.getTime() === current.getTime(),
+      ).length;
 
       const prepTimeMs = (vendor.averagePrepTime || 15) * 60000;
-      const isPast = isToday && (now.getTime() >= (current.getTime() - prepTimeMs));
-      let status = 'available';
+      const isPast = isToday && now.getTime() >= current.getTime() - prepTimeMs;
+      let status = "available";
 
       if (isPast) {
-        status = 'unavailable';
+        status = "unavailable";
       } else if (ordersInSlot >= maxOrdersPerSlot) {
-        status = 'full';
+        status = "full";
       } else if (ordersInSlot >= maxOrdersPerSlot * 0.8) {
-        status = 'limited';
+        status = "limited";
       }
 
       slots.push({
@@ -229,12 +253,11 @@ router.get('/:id/available-food-slots', async (req, res, next) => {
         dateTime: new Date(current),
         ordersCount: ordersInSlot,
         capacity: maxOrdersPerSlot,
-        status
+        status,
       });
 
       current = new Date(current.getTime() + slotDuration * 60000);
     }
-
 
     res.json({ success: true, data: slots });
   } catch (error) {
@@ -243,4 +266,3 @@ router.get('/:id/available-food-slots', async (req, res, next) => {
 });
 
 module.exports = router;
-
