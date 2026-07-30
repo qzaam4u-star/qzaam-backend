@@ -351,7 +351,7 @@ router.get('/orders', async (req, res, next) => {
       createdAt: booking.createdAt
     }));
     // Merge & Sort
-    const orders = [
+    const allorders = [
       ...formattedOrders,
       ...formattedSalonBookings
     ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -360,7 +360,7 @@ router.get('/orders', async (req, res, next) => {
     // Since we're using Prisma with JSON for items, let's also fetch vendor names manually if needed or just return raw.
     // For now, let's return raw orders.
 
-    res.status(200).json({ success: true, data: orders });
+    res.status(200).json({ success: true, data: allorders });
   } catch (error) {
     next(error);
   }
