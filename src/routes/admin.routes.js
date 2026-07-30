@@ -325,7 +325,7 @@ router.get('/orders', async (req, res, next) => {
       orderBy: { createdAt: 'desc' }
     });
     // Format Food Orders
-    const formattedOrders = Orders.map(order => ({
+    const formattedorders = orders.map(order => ({
       id: order.id,
       type: "food",
       customerName: order.customerName,
@@ -352,7 +352,7 @@ router.get('/orders', async (req, res, next) => {
     }));
     // Merge & Sort
     const allorders = [
-      ...formattedOrders,
+      ...formattedorders,
       ...formattedSalonBookings
     ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     
