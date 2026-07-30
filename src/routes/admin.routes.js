@@ -319,7 +319,43 @@ router.get('/orders', async (req, res, next) => {
       include: { vendor: true },
       orderBy: { createdAt: 'desc' }
     });
-
+    //saloon bookings
+    const salonBookings = await prisma.booking.findMany({
+      include: { vendor: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    // Format Food Orders
+    const formattedOrders = Orders.map(order => ({
+      id: order.id,
+      type: "food",
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      services: order.items,
+      vendor: order.vendor,
+      totalAmount: order.totalAmount,
+      status: order.status,
+      slotTime: order.scheduledTime || order.slotDateTime,
+      createdAt: order.createdAt
+    }));
+    // Format Salon Bookings
+    const formattedSalonBookings = salonBookings.map(booking => ({
+      id: booking.id,
+      type: "salon",
+      customerName: booking.customerName,
+      customerPhone: booking.customerPhone,
+      services: booking.services,
+      vendor: booking.vendor,
+      totalAmount: booking.totalAmount,
+      status: booking.status,
+      slotTime: booking.slotTime,
+      createdAt: booking.createdAt
+    }));
+    // Merge & Sort
+    const orders = [
+      ...formattedOrders,
+      ...formattedSalonBookings
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
     // In a real app, we'd use relations to get vendor names. 
     // Since we're using Prisma with JSON for items, let's also fetch vendor names manually if needed or just return raw.
     // For now, let's return raw orders.
