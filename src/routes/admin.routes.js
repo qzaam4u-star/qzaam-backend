@@ -316,6 +316,7 @@ router.patch('/vendor/:id', async (req, res, next) => {
 router.get('/orders', async (req, res, next) => {
   try {
     const orders = await prisma.order.findMany({
+      include: { vendor: true },
       orderBy: { createdAt: 'desc' }
     });
 
