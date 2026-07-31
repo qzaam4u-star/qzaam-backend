@@ -10,13 +10,15 @@ const calculateOrderTotals = ({ subtotal, hasGst = false, vendorType = 'food', i
   // 1. Platform Fee / Commission
   // Food: Based on slabs. Salon: Fixed for now or same logic?
   // User example: ₹140 subtotal -> ₹5 fee.
-  let platformFee = 0;
+  // Platform fee disabled
+  const platformFee = 0;
+  {/*let platformFee = 0;
   if (parsedSubtotal > 0 && !isReferralApplied) {
     if (parsedSubtotal < 200) platformFee = 5;
     else if (parsedSubtotal <= 500) platformFee = 10;
     else if (parsedSubtotal <= 1000) platformFee = 15;
     else platformFee = 20;
-  }
+  }*/}
 
   // 2. Taxes (GST - 5% if applicable)
   // Frontend currently adds 5% tax. Backend creation doesn't.
