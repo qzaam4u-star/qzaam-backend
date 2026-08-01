@@ -304,5 +304,121 @@ async function processBookingCustomerReferralRewards(booking) {
 
   console.log(`[CustomerReferral] Successful referral logged for referrer ${referrer.phone} referring ${booking.customerPhone}`);
 }
+// Handle appointment helps to book without razorpay
+router.post("/", async (req, res, next) => {
+  try {
+    const {
+      customerName,
+      customerPhone,
+      vendorId,
+      services,
+      slotTime,
+      stylistId,
+      stylistPreference,
+      scheduledDate,
+      scheduledSlot,
+      appliedReferralCode
+    } = req.body;
 
+    if (
+      !customerName ||
+      !customerPhone ||
+      !vendorId ||
+      !services ||
+      services.length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields"
+      });
+    }
+
+    // Find or create customer
+    let customer = await prisma.customer.findUnique({
+      where: { phone: customerPhone }
+    });
+
+    if (!customer) {
+      customer = await prisma.customer.create({
+        data: {
+          name: customerName,
+          phone: customerPhone
+        }
+      });
+    } else if (customer.name !== customerName) {
+      customer = await prisma.customer.update({
+        where: { phone: customerPhone },
+        data: { name: customerName }
+      });
+    }
+
+    // Calculate totals
+    const totalAmount = services.reduce(
+      (sum, service) => sum + Number(service.price || 0),
+      0
+    );
+
+    const totalDuration = services.reduce(
+      (sum, service) => sum + Number(service.duration || 30),
+      0
+    );
+
+    // Appointment time
+    const slotDateTime =
+      scheduledDate && scheduledSlot
+        ? parseISTDateTime(scheduledDate, scheduledSlot)
+        : new Date(slotTime);
+
+    const slotEndTime = new Date(
+      slotDateTime.getTime() + totalDuration * 60000
+    );
+
+    // Create booking
+    const booking = await prisma.booking.create({
+      data: {
+        customerName,
+        customerPhone,
+        customerId: customer.id,
+        vendorId,
+
+        services,
+
+        totalAmount,
+        platformFee: 0,
+        finalAmount: totalAmount,
+
+        slotTime: slotDateTime,
+        slotEndTime,
+        totalDuration,
+
+        status: "placed",
+
+        paymentMethod: "cash",
+        paymentStatus: "pending",
+
+        tokenNumber: null,
+        tokenIndex: null,
+
+        stylistId:
+          stylistPreference === "anyone"
+            ? null
+            : stylistId || null,
+
+        stylistPreference: stylistPreference || "specific",
+
+        type: "salon",
+
+        appliedReferralCode: appliedReferralCode || null
+      }
+    });
+
+    res.json({
+      success: true,
+      booking
+    });
+
+  } catch (err) {
+    next(err);
+  }
+});
 module.exports = router;
