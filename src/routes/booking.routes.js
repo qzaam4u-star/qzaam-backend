@@ -364,10 +364,7 @@ router.post("/", async (req, res, next) => {
     );
 
     // Appointment time
-    const slotDateTime =
-      scheduledDate && scheduledSlot
-        ? parseISTDateTime(scheduledDate, scheduledSlot)
-        : new Date(slotTime);
+    const slotDateTime = new Date(slotTime);
 
     const slotEndTime = new Date(
       slotDateTime.getTime() + totalDuration * 60000
