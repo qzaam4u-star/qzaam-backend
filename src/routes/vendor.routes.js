@@ -291,7 +291,47 @@ router.delete('/images/:id', protect, restrictTo('vendor'), async (req, res, nex
     next(error);
   }
 });
+// POST /vendor/upload-profile-image
+router.post(
+  '/upload-profile-image',
+  protect,
+  restrictTo('vendor'),
+  imageUpload.single('profileImage'),
+  async (req, res, next) => {
+    try {
+      if (!req.file) {
+        return next(new ApiError(400, 'No profile image provided'));
+      }
 
+      const vendorId = req.user.id;
+
+      const ext =
+        EXTENSION_BY_MIME_TYPE[req.file.mimetype] || 'jpg';
+
+      const key = `vendor-profile/${vendorId}.${ext}`;
+
+      const imageUrl = await uploadBuffer(
+        req.file.buffer,
+        key,
+        req.file.mimetype
+      );
+
+      await prisma.user.update({
+        where: { id: vendorId },
+        data: {
+          profileImage: imageUrl,
+        },
+      });
+
+      res.json({
+        success: true,
+        imageUrl,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 // POST /vendor/upload-images — vendor uploads up to MAX_IMAGE_FILES images (max MAX_IMAGE_SIZE_BYTES each) to R2
 router.post('/upload-images', protect, restrictTo('vendor'), (req, res, next) => {
   imageUpload.array('images', MAX_IMAGE_FILES)(req, res, (err) => {
