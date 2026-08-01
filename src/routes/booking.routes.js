@@ -56,7 +56,41 @@ router.get('/vendor', protect, restrictTo('vendor'), async (req, res, next) => {
     next(error);
   }
 });
+//Your order data
+// GET /bookings/customer/:phone — customer's booking history
+router.get('/customer/:phone', async (req, res, next) => {
+  try {
+    const { phone } = req.params;
 
+    const bookings = await prisma.booking.findMany({
+      where: {
+        customerPhone: phone,
+        status: {
+          not: 'cancelled'
+        }
+      },
+      include: {
+        vendor: {
+          select: {
+            outletName: true,
+            name: true
+          }
+        },
+        stylist: true
+      },
+      orderBy: {
+        slotTime: 'desc'
+      }
+    });
+
+    res.json({
+      success: true,
+      data: bookings
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 // GET /bookings/:id — public tracking
 router.get('/:id', async (req, res, next) => {
   try {
