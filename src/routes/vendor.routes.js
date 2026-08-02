@@ -58,6 +58,7 @@ router.get('/profile', protect, restrictTo('vendor'), async (req, res, next) => 
         outletName: true,
         address: true,
         averagePrepTime: true,
+        profileImage: true,
         role: true,
         vendorType: true,
         slotDuration: true,
