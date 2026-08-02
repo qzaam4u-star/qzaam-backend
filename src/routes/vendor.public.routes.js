@@ -99,6 +99,7 @@ router.get("/:id", async (req, res, next) => {
         mobile: true,
         vendorType: true,
         role: true,
+        profileImage: true,
         stylists: true,
         slotDuration: true,
         maxOrdersPerSlot: true,
