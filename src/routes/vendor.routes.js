@@ -298,6 +298,9 @@ router.post(
   restrictTo('vendor'),
   imageUpload.single('profileImage'),
   async (req, res, next) => {
+    console.log("Content-Type:", req.headers["content-type"]);
+    console.log("req.file:", req.file);
+    console.log("req.body:", req.body);
     try {
       if (!req.file) {
         return next(new ApiError(400, 'No profile image provided'));
