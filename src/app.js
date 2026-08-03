@@ -41,6 +41,7 @@ const serviceRoutes = require("./routes/service.routes");
 const bookingRoutes = require("./routes/booking.routes");
 const walletRoutes = require("./routes/wallet.routes.js");
 const wishlistRoutes = require("./routes/wishlist.routes");
+const couponRoutes = require("./routes/coupon.routes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/vendor/menu", menuVendorRoutes);
@@ -60,6 +61,7 @@ app.use("/api/services", serviceRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/coupons", couponRoutes);
 
 // Catch undefined routes
 app.use((req, res, next) => {
