@@ -306,3 +306,29 @@ model VendorImages {
   creator   User     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 }
+model Coupon {
+  id            String   @id @default(uuid())
+
+  code          String   @unique
+  title         String
+  description   String?
+
+  discountType  String      // FLAT or PERCENT
+  discountValue Float
+
+  minOrder      Float @default(0)
+  maxDiscount   Float?
+
+  vendorId       String?
+  vendor         User? @relation(fields: [vendorId], references: [id])
+
+  active        Boolean @default(true)
+
+  startDate     DateTime
+  endDate       DateTime
+
+  usageLimit    Int?
+  usedCount     Int @default(0)
+
+  createdAt     DateTime @default(now())
+}
