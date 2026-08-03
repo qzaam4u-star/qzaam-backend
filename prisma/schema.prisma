@@ -307,28 +307,31 @@ model VendorImages {
   createdAt DateTime @default(now())
 }
 model Coupon {
-  id            String   @id @default(uuid())
+  id               String   @id @default(uuid())
 
-  code          String   @unique
-  title         String
-  description   String?
+  code             String   @unique
+  title            String
+  description      String?
 
-  discountType  String      // FLAT or PERCENT
-  discountValue Float
+  discountType     String
+  discountValue    Float
 
-  minOrder      Float @default(0)
-  maxDiscount   Float?
+  minimumOrder     Float    @default(0) @map("minimumOrder")
+  maximumDiscount  Float?   @map("maximumDiscount")
 
-  vendorId       String?
-  vendor         User? @relation(fields: [vendorId], references: [id])
+  vendorId         String?
+  vendor           User?    @relation(fields: [vendorId], references: [id])
 
-  active        Boolean @default(true)
+  active           Boolean  @default(true) @map("isActive")
 
-  startDate     DateTime
-  endDate       DateTime
+  validFrom        DateTime @default(now()) @map("validFrom")
+  validTill        DateTime? @map("validTill")
 
-  usageLimit    Int?
-  usedCount     Int @default(0)
+  usageLimit       Int?     @map("usageLimit")
+  usedCount        Int      @default(0) @map("usedCount")
 
-  createdAt     DateTime @default(now())
+  createdAt        DateTime @default(now()) @map("createdAt")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updatedAt")
+
+  @@map("Coupon")
 }
