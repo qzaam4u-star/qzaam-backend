@@ -1,4 +1,4 @@
-const prisma = require("../verify_prisma");
+const prisma = require("../config/prisma");
 
 exports.getCoupons = async (req, res) => {
 
