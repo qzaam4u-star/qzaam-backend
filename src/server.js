@@ -11,4 +11,3 @@ const { checkOrderTimeouts } = require("./utils/orderTimeoutChecker");
 setInterval(() => {
   checkOrderTimeouts();
 }, 30000); // every 30 seconds
-app.use("/api/coupons",couponRoutes);
