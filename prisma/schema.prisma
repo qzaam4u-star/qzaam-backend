@@ -50,7 +50,7 @@ model User {
   stylists          Stylist[]
   wishlists         Wishlist[]
   images      VendorImages[]
-  
+  coupons      Coupon[]
   // Food Slot Configuration
   slotDuration      Int?     @default(30)
   maxOrdersPerSlot  Int?     @default(5)
