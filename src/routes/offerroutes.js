@@ -45,7 +45,7 @@ router.post(
     }
   },
 
-  offerController.createOffer
+  offercontroller.createOffer
 );
 
 module.exports = router;
