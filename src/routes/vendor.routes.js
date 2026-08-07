@@ -20,7 +20,7 @@ const MAX_IMAGE_SIZE_BYTES = Number(process.env.VENDOR_UPLOAD_MAX_SIZE_MB || 2) 
 const {
   imageUpload,
   EXTENSION_BY_MIME_TYPE,
-} = require('../middlewares/imageUpload.middleware');
+} = require('../middlewares/imageupload.middleware');
 const MAX_IMAGE_FILES = Number(process.env.VENDOR_UPLOAD_MAX_FILES || 4);
 const MAX_TOTAL_IMAGES = Number(process.env.VENDOR_UPLOAD_MAX_TOTAL_IMAGES || 20);
 {/*
