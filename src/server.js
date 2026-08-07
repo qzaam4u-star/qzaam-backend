@@ -2,17 +2,17 @@ require("dotenv").config();
 
 const app = require("./app");
 
-const { archiveExpiredOffers } = require("./utils/archiveexpiredoffers");
+const { archiveexpiredoffers } = require("./utils/archiveexpiredoffers");
 const { checkOrderTimeouts } = require("./utils/orderTimeoutChecker");
 
 const PORT = process.env.PORT || 5000;
 
 // Run once when server starts
-archiveExpiredOffers();
+archiveexpiredoffers();
 
 // Archive expired offers every 15 minutes
 setInterval(() => {
-  archiveExpiredOffers();
+  archiveexpiredoffers();
 }, 15 * 60 * 1000);
 
 // Existing order timeout checker
