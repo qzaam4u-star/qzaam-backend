@@ -23,7 +23,7 @@ exports.createOffer = async (req, res, next) => {
         category,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        imageUrl: req.file ? req.file.path : null,
+        imageUrl: req.imageUrl,
         status: 'PENDING'
       }
     });
