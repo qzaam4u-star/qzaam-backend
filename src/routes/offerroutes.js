@@ -56,7 +56,7 @@ router.get(
   '/pending',
   protect,
   restrictTo('admin'),
-  offerController.getPendingOffers
+  offercontroller.getPendingOffers
 );
 
 // Approve offer
@@ -64,7 +64,7 @@ router.patch(
   '/:id/approve',
   protect,
   restrictTo('admin'),
-  offerController.approveOffer
+  offercontroller.approveOffer
 );
 
 // Reject offer
@@ -72,6 +72,6 @@ router.patch(
   '/:id/reject',
   protect,
   restrictTo('admin'),
-  offerController.rejectOffer
+  offercontroller.rejectOffer
 );
 module.exports = router;
