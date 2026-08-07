@@ -1,5 +1,7 @@
 const prisma = require('../config/prisma');
 const { ApiError } = require('../utils/errors');
+const crypto = require("crypto");
+const { uploadBuffer, deleteObject } = require("../cloudflareR2");
 
 exports.createOffer = async (req, res, next) => {
   try {
@@ -14,7 +16,18 @@ exports.createOffer = async (req, res, next) => {
     if (!title || !category || !startDate || !endDate) {
       return next(new ApiError(400, 'Required fields are missing'));
     }
+    let imageUrl = null;
 
+if (req.file) {
+  const ext = req.file.mimetype.split("/")[1];
+  const key = `offers/${req.user.id}/${crypto.randomUUID()}.${ext}`;
+
+  imageUrl = await uploadBuffer(
+    req.file.buffer,
+    key,
+    req.file.mimetype
+  );
+}
     const offer = await prisma.offer.create({
       data: {
         vendorId: req.user.id,
@@ -23,7 +36,7 @@ exports.createOffer = async (req, res, next) => {
         category,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        imageUrl: req.imageUrl,
+        imageUrl,
         status: 'PENDING'
       }
     });
@@ -171,6 +184,58 @@ exports.getAllOffers = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: offers
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+exports.getVendorOffers = async (req, res, next) => {
+  try {
+    const offers = await prisma.offer.findMany({
+      where: {
+        vendorId: req.user.id
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    });
+
+    res.json({
+      success: true,
+      data: offers
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteVendorOffer = async (req, res, next) => {
+  try {
+    const offer = await prisma.offer.findFirst({
+      where: {
+        id: req.params.id,
+        vendorId: req.user.id
+      }
+    });
+
+    if (!offer) {
+      return next(new ApiError(404, "offer not found"));
+    }
+
+    if (offer.imageUrl) {
+      const key = new URL(offer.imageUrl).pathname.replace(/^\//, "");
+      await deleteObject(key);
+    }
+
+    await prisma.offer.delete({
+      where: {
+        id: offer.id
+      }
+    });
+
+    res.json({
+      success: true,
+      message: "offer deleted successfully"
     });
   } catch (err) {
     next(err);
