@@ -11,7 +11,7 @@ const {
   EXTENSION_BY_MIME_TYPE,
 } = require('../middlewares/imageupload.middleware');
 
-const offerController = require('../controllers/offerController');
+const offercontroller = require('../controllers/offercontroller');
 
 router.post(
   '/',
