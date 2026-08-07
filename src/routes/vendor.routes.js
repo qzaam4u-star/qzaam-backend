@@ -8,7 +8,7 @@ const prisma = require('../config/prisma');
 
 const router = express.Router();
 
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+{/*const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const EXTENSION_BY_MIME_TYPE = {
   'image/jpeg': 'jpg',
   'image/jpg': 'jpg',
@@ -16,9 +16,14 @@ const EXTENSION_BY_MIME_TYPE = {
   'image/webp': 'webp',
 };
 const MAX_IMAGE_SIZE_BYTES = Number(process.env.VENDOR_UPLOAD_MAX_SIZE_MB || 2) * 1024 * 1024;
+ */}
+const {
+  imageUpload,
+  EXTENSION_BY_MIME_TYPE,
+} = require('../middlewares/imageUpload.middleware');
 const MAX_IMAGE_FILES = Number(process.env.VENDOR_UPLOAD_MAX_FILES || 4);
 const MAX_TOTAL_IMAGES = Number(process.env.VENDOR_UPLOAD_MAX_TOTAL_IMAGES || 20);
-
+{/*
 const imageUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_IMAGE_SIZE_BYTES, files: MAX_IMAGE_FILES },
@@ -28,7 +33,7 @@ const imageUpload = multer({
     }
     cb(null, true);
   },
-});
+});*/}
 
 router.get('/generate-qr', protect, restrictTo('vendor'), async (req, res) => {
   const vendorId = req.user.id;
