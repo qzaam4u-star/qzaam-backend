@@ -1,6 +1,6 @@
 const prisma = require('../config/prisma');
 
-const archiveExpiredOffers = async () => {
+const archiveexpiredoffers = async () => {
   try {
     const result = await prisma.offer.updateMany({
       where: {
@@ -22,4 +22,4 @@ const archiveExpiredOffers = async () => {
   }
 };
 
-module.exports = { archiveExpiredOffers };
+module.exports = { archiveexpiredoffers };
