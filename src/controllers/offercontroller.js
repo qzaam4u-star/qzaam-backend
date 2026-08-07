@@ -1,5 +1,5 @@
 const prisma = require('../config/prisma');
-const ApiError = require('../utils/ApiError');
+const { ApiError } = require('../utils/errors');
 
 exports.createOffer = async (req, res, next) => {
   try {
