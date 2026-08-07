@@ -1,6 +1,6 @@
 require("dotenv").config();
 const app = require("./app");
-
+require('./utils/archiveexpiredoffers');
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
