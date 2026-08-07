@@ -38,3 +38,74 @@ exports.createOffer = async (req, res, next) => {
     next(err);
   }
 };
+{/* add admin approval announcement*/}
+exports.getPendingOffers = async (req, res, next) => {
+  try {
+    const offers = await prisma.offer.findMany({
+      where: {
+        status: 'PENDING'
+      },
+      include: {
+        vendor: {
+          select: {
+            id: true,
+            name: true,
+            outletName: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: offers
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.approveOffer = async (req, res, next) => {
+  try {
+    const offer = await prisma.offer.update({
+      where: {
+        id: req.params.id
+      },
+      data: {
+        status: 'APPROVED'
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Offer approved successfully.',
+      data: offer
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.rejectOffer = async (req, res, next) => {
+  try {
+    const offer = await prisma.offer.update({
+      where: {
+        id: req.params.id
+      },
+      data: {
+        status: 'REJECTED'
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Offer rejected successfully.',
+      data: offer
+    });
+  } catch (err) {
+    next(err);
+  }
+};
