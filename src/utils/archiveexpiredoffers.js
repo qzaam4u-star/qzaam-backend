@@ -1,4 +1,3 @@
-const cron = require('node-cron');
 const prisma = require('../config/prisma');
 
 const archiveExpiredOffers = async () => {
@@ -7,12 +6,12 @@ const archiveExpiredOffers = async () => {
       where: {
         status: 'APPROVED',
         endDate: {
-          lt: new Date()
-        }
+          lt: new Date(),
+        },
       },
       data: {
-        status: 'ARCHIVED'
-      }
+        status: 'ARCHIVED',
+      },
     });
 
     if (result.count > 0) {
@@ -23,10 +22,4 @@ const archiveExpiredOffers = async () => {
   }
 };
 
-// Every 15 minutes
-cron.schedule('*/15 * * * *', archiveexpiredoffers);
-
-// Run once when server starts
-archiveexpiredoffers();
-
-module.exports = archiveExpiredOffers;
+module.exports = { archiveExpiredOffers };
