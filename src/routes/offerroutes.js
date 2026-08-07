@@ -9,7 +9,7 @@ const { uploadBuffer } = require('../cloudflareR2');
 const {
   imageUpload,
   EXTENSION_BY_MIME_TYPE,
-} = require('../middlewares/imageUpload.middleware');
+} = require('../middlewares/imageupload.middleware');
 
 const offerController = require('../controllers/offerController');
 
