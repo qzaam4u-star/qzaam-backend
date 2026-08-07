@@ -39,6 +39,7 @@ model User {
   createdAt         DateTime @default(now())
   menuItems         MenuItem[]
   orders            Order[]
+  offers            Offer[]
   services          Service[]
   bookings          Booking[]
   complaints        Complaint[]
