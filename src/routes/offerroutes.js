@@ -47,5 +47,31 @@ router.post(
 
   offercontroller.createOffer
 );
+// ===============================
+// Admin Offer Management
+// ===============================
 
+// Get all pending offers
+router.get(
+  '/pending',
+  protect,
+  restrictTo('admin'),
+  offerController.getPendingOffers
+);
+
+// Approve offer
+router.patch(
+  '/:id/approve',
+  protect,
+  restrictTo('admin'),
+  offerController.approveOffer
+);
+
+// Reject offer
+router.patch(
+  '/:id/reject',
+  protect,
+  restrictTo('admin'),
+  offerController.rejectOffer
+);
 module.exports = router;
