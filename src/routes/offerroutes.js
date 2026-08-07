@@ -74,4 +74,8 @@ router.patch(
   restrictTo('admin'),
   offercontroller.rejectOffer
 );
+
+// Customer routes
+router.get('/home', offercontroller.getHomeOffers);
+router.get('/', offercontroller.getAllOffers);
 module.exports = router;
