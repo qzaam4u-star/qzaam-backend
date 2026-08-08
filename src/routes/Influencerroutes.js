@@ -4,13 +4,14 @@ const router = express.Router();
 
 const {
   protect,
-  restrictTo
+  restrictTo,
 } = require("../middlewares/auth.middleware");
 
-const Influencerroutes =
-  require("../routes/Influencerroutes");
+const InfluencerProfileController = require(
+  "../controllers/InfluencerProfileController"
+);
 
-
+// Create influencer profile
 router.post(
   "/profile",
   protect,
@@ -18,7 +19,7 @@ router.post(
   InfluencerProfileController.createProfile
 );
 
-
+// Get my influencer profile
 router.get(
   "/me",
   protect,
@@ -26,7 +27,7 @@ router.get(
   InfluencerProfileController.getMyProfile
 );
 
-
+// Update my influencer profile
 router.put(
   "/me",
   protect,
@@ -34,10 +35,7 @@ router.put(
   InfluencerProfileController.updateMyProfile
 );
 
-
-/*
-ADMIN ONLY
-*/
+// Admin - Get all influencers
 router.get(
   "/admin",
   protect,
@@ -45,7 +43,7 @@ router.get(
   InfluencerProfileController.getAllInfluencers
 );
 
-
+// Admin - Get influencer by ID
 router.get(
   "/admin/:id",
   protect,
