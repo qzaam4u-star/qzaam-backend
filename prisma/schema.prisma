@@ -9,6 +9,7 @@ datasource db {
 enum Role {
   vendor
   admin
+  influencer
 }
 
 model User {
@@ -58,6 +59,8 @@ model User {
   openingTime       String?  @default("09:00")
   closingTime       String?  @default("21:00")
   slotEnabled       Boolean  @default(false)
+  tier SalonTier    @default(PLATINUM)
+  campaigns Campaign[]
 }
 
 //added @default and offers
@@ -351,4 +354,104 @@ model Offer {
   vendor      User     @relation(fields: [vendorId], references: [id])
 
   @@index([vendorId])
+}
+enum SalonTier {
+  PREMIUM
+  DIAMOND
+  PLATINUM
+}
+
+enum CampaignStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CLOSED
+  COMPLETED
+}
+
+enum InfluencerStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ApplicationStatus {
+  PENDING
+  SHORTLISTED
+  SELECTED
+  REJECTED
+  WITHDRAWN
+}
+
+model Influencer {
+  id                String             @id @default(cuid())
+  name              String
+  instagramId       String?
+  phone             String
+  email             String
+  followers         Int?
+  ratePer30Sec      Decimal?           @db.Decimal(10, 2)
+  preferredPlatform String?
+  location          String?
+
+  aadhaarUrl        String?
+  panUrl            String?
+
+  status            InfluencerStatus   @default(PENDING)
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  applications      CampaignApplication[]
+}
+
+model Campaign {
+  id                String             @id @default(cuid())
+
+  vendorId          String
+  vendor            User               @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  title             String
+  description       String?
+
+  salonTier         SalonTier
+
+  minFollowers      Int?
+  maxFollowers      Int?
+
+  videoLength       Int?
+  budget            String?
+
+  location          String?
+  campaignDate      DateTime?
+
+  preferredPlatform String?
+
+  imageUrl          String?
+
+  status            CampaignStatus     @default(PENDING)
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  applications      CampaignApplication[]
+}
+
+model CampaignApplication {
+  id             String            @id @default(cuid())
+
+  campaignId     String
+  influencerId   String
+
+  campaign       Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  influencer     Influencer        @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+
+  status         ApplicationStatus @default(PENDING)
+
+  adminNotes     String?
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([campaignId, influencerId])
 }
