@@ -10,31 +10,17 @@ exports.createOffer = async (req, res, next) => {
       title,
       description,
       category,
-      serviceId,
       startDate,
       endDate
     } = req.body;
 
-    if (!title || !category || !serviceId || !startDate || !endDate) {
+    if (!title || !category || !startDate || !endDate) {
       return next(new ApiError(400, 'Required fields are missing'));
-    }
-
-    // Make sure the selected service belongs to this vendor
-    const service = await prisma.service.findFirst({
-      where: {
-        id: serviceId,
-        vendorId: req.user.id
-      }
-    });
-
-    if (!service) {
-      return next(new ApiError(400, 'Invalid service selected'));
     }
 
     const offer = await prisma.offer.create({
       data: {
         vendorId: req.user.id,
-        serviceId,
         title,
         description,
         category,
