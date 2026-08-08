@@ -353,5 +353,4 @@ model Offer {
   vendor      User     @relation(fields: [vendorId], references: [id])
 
   @@index([vendorId])
-  @@index([serviceId])
 }
