@@ -48,6 +48,17 @@ router.post(
   offercontroller.createOffer
 );
 // ===============================
+// Vendor Offer Management
+// ===============================
+
+router.get(
+  '/my',
+  protect,
+  restrictTo('vendor'),
+  offercontroller.getVendorOffers
+);
+
+// ===============================
 // Admin Offer Management
 // ===============================
 
