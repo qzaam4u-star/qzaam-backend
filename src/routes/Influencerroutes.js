@@ -8,7 +8,7 @@ const {
 } = require("../middlewares/auth.middleware");
 
 const Influencerroutes =
-  require("../controllers/Influencerroutes");
+  require("../routes/Influencerroutes");
 
 
 router.post(
