@@ -173,34 +173,27 @@ exports.rejectOffer = async (req, res, next) => {
 };
 exports.getHomeOffers = async (req, res, next) => {
   try {
+    const now = new Date();
+
     const offers = await prisma.offer.findMany({
       where: {
         status: 'APPROVED',
         startDate: {
-          lte: new Date()
+          lte: now
         },
         endDate: {
-          gte: new Date()
+          gte: now
         }
       },
       include: {
-  vendor: {
-    select: {
-      id: true,
-      outletName: true,
-      profileImage: true
-    }
-  },
-  service: {
-    select: {
-      id: true,
-      name: true,
-      price: true,
-      duration: true,
-      category: true
-    }
-  }
-},
+        vendor: {
+          select: {
+            id: true,
+            outletName: true,
+            profileImage: true
+          }
+        }
+      },
       orderBy: {
         createdAt: 'desc'
       }
@@ -210,40 +203,35 @@ exports.getHomeOffers = async (req, res, next) => {
       success: true,
       data: offers
     });
+
   } catch (err) {
+    console.error('GET HOME OFFERS ERROR:', err);
     next(err);
   }
 };
 exports.getAllOffers = async (req, res, next) => {
   try {
+    const now = new Date();
+
     const offers = await prisma.offer.findMany({
       where: {
         status: 'APPROVED',
         startDate: {
-          lte: new Date()
+          lte: now
         },
         endDate: {
-          gte: new Date()
+          gte: now
         }
       },
       include: {
-  vendor: {
-    select: {
-      id: true,
-      outletName: true,
-      profileImage: true
-    }
-  },
-  service: {
-    select: {
-      id: true,
-      name: true,
-      price: true,
-      duration: true,
-      category: true
-    }
-  }
-},
+        vendor: {
+          select: {
+            id: true,
+            outletName: true,
+            profileImage: true
+          }
+        }
+      },
       orderBy: {
         createdAt: 'desc'
       }
@@ -253,7 +241,9 @@ exports.getAllOffers = async (req, res, next) => {
       success: true,
       data: offers
     });
+
   } catch (err) {
+    console.error('GET ALL OFFERS ERROR:', err);
     next(err);
   }
 };
