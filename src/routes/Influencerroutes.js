@@ -15,7 +15,7 @@ router.post(
   "/profile",
   protect,
   restrictTo("influencer"),
-  influencerController.createProfile
+  InfluencerProfileController.createProfile
 );
 
 
@@ -23,7 +23,7 @@ router.get(
   "/me",
   protect,
   restrictTo("influencer"),
-  influencerController.getMyProfile
+  InfluencerProfileController.getMyProfile
 );
 
 
@@ -31,7 +31,7 @@ router.put(
   "/me",
   protect,
   restrictTo("influencer"),
-  influencerController.updateMyProfile
+  InfluencerProfileController.updateMyProfile
 );
 
 
@@ -42,7 +42,7 @@ router.get(
   "/admin",
   protect,
   restrictTo("admin"),
-  influencerController.getAllInfluencers
+  InfluencerProfileController.getAllInfluencers
 );
 
 
@@ -50,7 +50,7 @@ router.get(
   "/admin/:id",
   protect,
   restrictTo("admin"),
-  influencerController.getInfluencerById
+  InfluencerProfileController.getInfluencerById
 );
 
 module.exports = router;
