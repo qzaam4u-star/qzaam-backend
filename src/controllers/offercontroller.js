@@ -241,3 +241,33 @@ exports.deleteVendorOffer = async (req, res, next) => {
     next(err);
   }
 };
+exports.getOfferById = async (req, res, next) => {
+  try {
+    const offer = await prisma.offer.findFirst({
+      where: {
+        id: req.params.id,
+        status: 'APPROVED',
+      },
+      include: {
+        vendor: {
+          select: {
+            id: true,
+            outletName: true,
+            profileImage: true,
+          },
+        },
+      },
+    });
+
+    if (!offer) {
+      return next(new ApiError(404, "Offer not found"));
+    }
+
+    res.status(200).json({
+      success: true,
+      data: offer,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
