@@ -44,7 +44,7 @@ const wishlistRoutes = require("./routes/wishlist.routes");
 const couponRoutes = require("./routes/coupon.routes");
 const offerRoutes = require('./routes/offerroutes');
 const campaignRoutes = require("./routes/campaign.routes");
-const influencerRoutes = require("./routes/Influencerroutes");
+const Influencerroutes = require("./routes/Influencerroutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/vendor/menu", menuVendorRoutes);
@@ -70,7 +70,7 @@ app.use("/api/campaigns", campaignRoutes);
 
 app.use(
   "/api/influencers",
-  influencerRoutes
+  Influencerroutes
 );
 
 // Catch undefined routes
