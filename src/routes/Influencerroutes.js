@@ -7,7 +7,7 @@ const {
   restrictTo
 } = require("../middlewares/auth.middleware");
 
-const influencerController =
+const Influencerroutes =
   require("../controllers/Influencerroutes");
 
 
