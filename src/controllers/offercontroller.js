@@ -162,7 +162,7 @@ exports.getHomeOffers = async (req, res, next) => {
       category: true
     }
   }
-}
+},
       orderBy: {
         createdAt: 'desc'
       }
