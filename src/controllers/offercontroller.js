@@ -211,6 +211,37 @@ exports.getHomeOffers = async (req, res, next) => {
 };
 exports.getAllOffers = async (req, res, next) => {
   try {
+    const offers = await prisma.offer.findMany({
+      where: {
+        status: 'APPROVED'
+      },
+      include: {
+        vendor: {
+          select: {
+            id: true,
+            outletName: true,
+            profileImage: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: offers
+    });
+
+  } catch (err) {
+    console.error('GET ALL OFFERS ERROR:', err);
+    next(err);
+  }
+};
+{/*
+exports.getAllOffers = async (req, res, next) => {
+  try {
     const now = new Date();
 
     const offers = await prisma.offer.findMany({
@@ -247,6 +278,7 @@ exports.getAllOffers = async (req, res, next) => {
     next(err);
   }
 };
+*/}
 exports.getVendorOffers = async (req, res, next) => {
   try {
     const offers = await prisma.offer.findMany({
