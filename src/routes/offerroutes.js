@@ -59,6 +59,11 @@ router.get(
   offercontroller.getPendingOffers
 );
 
+router.get(
+  '/:id',
+  offercontroller.getOfferById
+);
+
 // Approve offer
 router.patch(
   '/:id/approve',
