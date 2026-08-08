@@ -9,11 +9,12 @@ exports.createOffer = async (req, res, next) => {
       title,
       description,
       category,
+      serviceId,
       startDate,
       endDate
     } = req.body;
 
-    if (!title || !category || !startDate || !endDate) {
+    if (!title || !category || !serviceId || !startDate || !endDate) {
       return next(new ApiError(400, 'Required fields are missing'));
     }
     let imageUrl = null;
@@ -28,9 +29,20 @@ if (req.file) {
     req.file.mimetype
   );
 }
+    const service = await prisma.service.findFirst({
+  where: {
+    id: serviceId,
+    vendorId: req.user.id
+  }
+});
+
+if (!service) {
+  return next(new ApiError(400, 'Invalid service selected'));
+}
     const offer = await prisma.offer.create({
       data: {
         vendorId: req.user.id,
+        serviceId,
         title,
         description,
         category,
@@ -134,14 +146,23 @@ exports.getHomeOffers = async (req, res, next) => {
         }
       },
       include: {
-        vendor: {
-          select: {
-            id: true,
-            outletName: true,
-            profileImage: true
-          }
-        }
-      },
+  vendor: {
+    select: {
+      id: true,
+      outletName: true,
+      profileImage: true
+    }
+  },
+  service: {
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      duration: true,
+      category: true
+    }
+  }
+}
       orderBy: {
         createdAt: 'desc'
       }
@@ -168,14 +189,23 @@ exports.getAllOffers = async (req, res, next) => {
         }
       },
       include: {
-        vendor: {
-          select: {
-            id: true,
-            outletName: true,
-            profileImage: true
-          }
-        }
-      },
+  vendor: {
+    select: {
+      id: true,
+      outletName: true,
+      profileImage: true
+    }
+  },
+  service: {
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      duration: true,
+      category: true
+    }
+  }
+},
       orderBy: {
         createdAt: 'desc'
       }
