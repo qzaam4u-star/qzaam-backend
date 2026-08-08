@@ -60,16 +60,18 @@ model User {
   slotEnabled       Boolean  @default(false)
 }
 
-
+//added @default and offers
 model Service {
   id          String   @id @default(uuid())
   vendorId    String
   vendor      User     @relation(fields: [vendorId], references: [id])
   name        String
   price       Float
-  duration    Int      @default(30) // minutes
+  duration    Int      @default(30)
   category    String   @default("General")
   createdAt   DateTime @default(now())
+
+  offers      Offer[]
 }
 
 model Booking {
@@ -339,6 +341,7 @@ model Coupon {
 model Offer {
   id          String   @id @default(uuid())
   vendorId    String
+  serviceId   String?
 
   title       String
   description String?
@@ -348,12 +351,14 @@ model Offer {
   startDate   DateTime
   endDate     DateTime
 
-  status      String   @default("pending")
+  status      String   @default("PENDING")
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  vendor      User @relation(fields: [vendorId], references: [id])
+  vendor      User     @relation(fields: [vendorId], references: [id])
+  service     Service? @relation(fields: [serviceId], references: [id])
 
   @@index([vendorId])
+  @@index([serviceId])
 }
