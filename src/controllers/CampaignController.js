@@ -1,21 +1,14 @@
-```js
 const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
-/*
-====================================================
-PUBLIC
-Get approved campaigns
-====================================================
-*/
+// PUBLIC - Get approved campaigns
 exports.getApprovedCampaigns = async (req, res, next) => {
   try {
     const campaigns = await prisma.campaign.findMany({
       where: {
         status: "APPROVED",
       },
-
       include: {
         vendor: {
           select: {
@@ -26,7 +19,6 @@ exports.getApprovedCampaigns = async (req, res, next) => {
           },
         },
       },
-
       orderBy: {
         createdAt: "desc",
       },
@@ -41,12 +33,7 @@ exports.getApprovedCampaigns = async (req, res, next) => {
   }
 };
 
-/*
-====================================================
-VENDOR
-Create campaign
-====================================================
-*/
+// VENDOR - Create campaign
 exports.createCampaign = async (req, res, next) => {
   try {
     const {
@@ -73,37 +60,26 @@ exports.createCampaign = async (req, res, next) => {
     const campaign = await prisma.campaign.create({
       data: {
         vendorId: req.user.id,
-
         title,
-        description,
-
+        description: description || null,
         salonTier,
-
         minFollowers:
           minFollowers !== undefined && minFollowers !== ""
             ? Number(minFollowers)
             : null,
-
         maxFollowers:
           maxFollowers !== undefined && maxFollowers !== ""
             ? Number(maxFollowers)
             : null,
-
         videoLength:
           videoLength !== undefined && videoLength !== ""
             ? Number(videoLength)
             : null,
-
         budget: budget || null,
         location: location || null,
-
-        campaignDate: campaignDate
-          ? new Date(campaignDate)
-          : null,
-
+        campaignDate: campaignDate ? new Date(campaignDate) : null,
         preferredPlatform: preferredPlatform || null,
         imageUrl: imageUrl || null,
-
         status: "PENDING",
       },
     });
@@ -118,19 +94,13 @@ exports.createCampaign = async (req, res, next) => {
   }
 };
 
-/*
-====================================================
-VENDOR
-Get own campaigns
-====================================================
-*/
+// VENDOR - Get own campaigns
 exports.getVendorCampaigns = async (req, res, next) => {
   try {
     const campaigns = await prisma.campaign.findMany({
       where: {
         vendorId: req.user.id,
       },
-
       include: {
         applications: {
           include: {
@@ -141,7 +111,6 @@ exports.getVendorCampaigns = async (req, res, next) => {
           },
         },
       },
-
       orderBy: {
         createdAt: "desc",
       },
@@ -156,12 +125,7 @@ exports.getVendorCampaigns = async (req, res, next) => {
   }
 };
 
-/*
-====================================================
-INFLUENCER
-Apply to campaign
-====================================================
-*/
+// INFLUENCER - Apply to campaign
 exports.applyToCampaign = async (req, res, next) => {
   try {
     const { id: campaignId } = req.params;
@@ -186,14 +150,6 @@ exports.applyToCampaign = async (req, res, next) => {
       });
     }
 
-    /*
-     * Your auth user has role = influencer,
-     * but CampaignApplication references the
-     * separate Influencer table.
-     *
-     * We therefore find the influencer using
-     * the authenticated user's email.
-     */
     const influencer = await prisma.influencer.findFirst({
       where: {
         email: req.user.email,
@@ -211,7 +167,7 @@ exports.applyToCampaign = async (req, res, next) => {
       await prisma.campaignApplication.findUnique({
         where: {
           campaignId_influencerId: {
-            campaignId,
+            campaignId: campaignId,
             influencerId: influencer.id,
           },
         },
@@ -224,14 +180,13 @@ exports.applyToCampaign = async (req, res, next) => {
       });
     }
 
-    const application =
-      await prisma.campaignApplication.create({
-        data: {
-          campaignId,
-          influencerId: influencer.id,
-          status: "PENDING",
-        },
-      });
+    const application = await prisma.campaignApplication.create({
+      data: {
+        campaignId: campaignId,
+        influencerId: influencer.id,
+        status: "PENDING",
+      },
+    });
 
     res.status(201).json({
       success: true,
@@ -243,19 +198,13 @@ exports.applyToCampaign = async (req, res, next) => {
   }
 };
 
-/*
-====================================================
-ADMIN
-Get pending campaigns
-====================================================
-*/
+// ADMIN - Get pending campaigns
 exports.getPendingCampaigns = async (req, res, next) => {
   try {
     const campaigns = await prisma.campaign.findMany({
       where: {
         status: "PENDING",
       },
-
       include: {
         vendor: {
           select: {
@@ -267,14 +216,12 @@ exports.getPendingCampaigns = async (req, res, next) => {
             tier: true,
           },
         },
-
         applications: {
           include: {
             influencer: true,
           },
         },
       },
-
       orderBy: {
         createdAt: "desc",
       },
@@ -289,19 +236,14 @@ exports.getPendingCampaigns = async (req, res, next) => {
   }
 };
 
-/*
-====================================================
-ADMIN
-Approve campaign
-====================================================
-*/
+// ADMIN - Approve campaign
 exports.approveCampaign = async (req, res, next) => {
   try {
     const { id } = req.params;
 
     const campaign = await prisma.campaign.findUnique({
       where: {
-        id,
+        id: id,
       },
     });
 
@@ -321,9 +263,8 @@ exports.approveCampaign = async (req, res, next) => {
 
     const updatedCampaign = await prisma.campaign.update({
       where: {
-        id,
+        id: id,
       },
-
       data: {
         status: "APPROVED",
       },
@@ -339,19 +280,14 @@ exports.approveCampaign = async (req, res, next) => {
   }
 };
 
-/*
-====================================================
-ADMIN
-Reject campaign
-====================================================
-*/
+// ADMIN - Reject campaign
 exports.rejectCampaign = async (req, res, next) => {
   try {
     const { id } = req.params;
 
     const campaign = await prisma.campaign.findUnique({
       where: {
-        id,
+        id: id,
       },
     });
 
@@ -371,9 +307,8 @@ exports.rejectCampaign = async (req, res, next) => {
 
     const updatedCampaign = await prisma.campaign.update({
       where: {
-        id,
+        id: id,
       },
-
       data: {
         status: "REJECTED",
       },
@@ -388,4 +323,3 @@ exports.rejectCampaign = async (req, res, next) => {
     next(err);
   }
 };
-```
