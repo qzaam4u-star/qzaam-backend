@@ -70,8 +70,6 @@ model Service {
   duration    Int      @default(30)
   category    String   @default("General")
   createdAt   DateTime @default(now())
-
-  offers      Offer[]
 }
 
 model Booking {
