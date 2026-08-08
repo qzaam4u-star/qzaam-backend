@@ -7,8 +7,7 @@ const {
   restrictTo
 } = require("../middlewares/auth.middleware");
 
-const campaignController =
-  require("../controllers/campaign.controller");
+const campaignController = require('../controllers/CampaignController');
 
 
 /*
