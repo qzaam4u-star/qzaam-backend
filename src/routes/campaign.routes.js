@@ -6,7 +6,7 @@ const {
   protect,
   restrictTo
 } = require("../middlewares/auth.middleware");
-
+const { imageUpload } = require("../middlewares/imageupload.middleware");
 const campaignController = require('../controllers/CampaignController');
 
 
