@@ -28,6 +28,7 @@ router.post(
   "/",
   protect,
   restrictTo("vendor"),
+  imageUpload.single("image"),
   campaignController.createCampaign
 );
 
