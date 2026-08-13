@@ -99,16 +99,6 @@ exports.getVendorCampaigns = async (req, res, next) => {
       where: {
         vendorId: req.user.id,
       },
-      include: {
-        applications: {
-          include: {
-            influencer: true,
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-        },
-      },
       orderBy: {
         createdAt: "desc",
       },
@@ -212,11 +202,6 @@ exports.getPendingCampaigns = async (req, res, next) => {
             email: true,
             mobile: true,
             tier: true,
-          },
-        },
-        applications: {
-          include: {
-            influencer: true,
           },
         },
       },
